@@ -1,8 +1,7 @@
 # PAC-MAN
-# Pac-Man JavaFX
 
 ## Descripción
-Juego tipo Pac-Man desarrollado en JavaFX.
+Juego tipo Pac-Man desarrollado en JavaFX usando InteliJ.
 
 ## Funcionalidades actuales
 - Movimiento con WASD y flechas
@@ -10,4 +9,4 @@ Juego tipo Pac-Man desarrollado en JavaFX.
 
 ## Cómo ejecutar
 1. Abrir en IntelliJ
-2. Ejecutar Main.java
+2. Ejecutar Main.java o Launch
