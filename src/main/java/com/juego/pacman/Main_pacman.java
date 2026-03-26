@@ -1,3 +1,4 @@
+//Clase que lanza el codigo
 package com.juego.pacman;
 
 import javafx.application.Application;
@@ -6,7 +7,7 @@ import javafx.stage.Stage;
 
 public class Main_pacman extends Application {
 
-    @Override
+    @Override //metodo principal de JavaFX
     public void start(Stage stage) {
         Game game = new Game();
 

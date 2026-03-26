@@ -1,4 +1,4 @@
-package com.juego.pacman;
+//Inicializa TODOS los componentes del juego
 import com.juego.pacman.Model.PacMan;
 import com.juego.pacman.Logic.GameLoop;
 import javafx.scene.Group;
@@ -14,7 +14,7 @@ public class Game {
 
     private PacMan pacman;
 
-    public Game() {
+    public Game() {//inicia el cic;o del juego
         root = new Group();
         canvas = new Canvas(800, 800);
         gc = canvas.getGraphicsContext2D();
@@ -24,7 +24,7 @@ public class Game {
         pacman = new PacMan();
     }
 
-    public void start(Scene scene) {
+    public void start(Scene scene) {//inicia el GameLoop
 
         // INPUT
         scene.setOnKeyPressed(e -> {

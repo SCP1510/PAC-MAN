@@ -1,5 +1,5 @@
+//Clase que representa al jugador osease Pac-Man
 package com.juego.pacman.Model;
-
 import javafx.scene.image.Image;
 
 public class PacMan {
@@ -26,7 +26,7 @@ public class PacMan {
         };
     }
 
-    public void update(long now) {
+    public void update(long now) {//actualiza la posicion y animacion de pac-man
         // Movimiento
         x += dx * speed;
         y += dy * speed;
@@ -38,7 +38,7 @@ public class PacMan {
         }
     }
 
-    public void setDirection(int dx, int dy) {
+    public void setDirection(int dx, int dy) {//nos da permiso de rotar al personaj y cambiar direccion
         this.dx = dx;
         this.dy = dy;
 
@@ -49,7 +49,7 @@ public class PacMan {
         else if (dy == 1) angle = 90;
     }
 
-    // 🔽 GETTERS GameLoop
+    // GETTERS GameLoop
 
     public double getX() {
         return x;
@@ -63,7 +63,7 @@ public class PacMan {
         return angle;
     }
 
-    public Image getCurrentFrame() {
+    public Image getCurrentFrame() {//Nos da el sprite
         return frames[currentFrame];
     }
 }

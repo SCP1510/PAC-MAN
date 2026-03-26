@@ -1,3 +1,4 @@
+//Maneja el ciclo principal del juego
 package com.juego.pacman.Logic;
 
 import com.juego.pacman.Model.PacMan;
@@ -5,7 +6,7 @@ import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.GraphicsContext;
 
 public class GameLoop extends AnimationTimer {
-
+    //se necesita ejecutafr en cada frame
     private GraphicsContext gc;
     private PacMan pacman;
 
@@ -20,11 +21,11 @@ public class GameLoop extends AnimationTimer {
         render();
     }
 
-    private void update(long now) {
+    private void update(long now) {//actualiza la logica
         pacman.update(now);
     }
 
-    private void render() {
+    private void render() {//dibuja los elementos
         gc.clearRect(0, 0, 800, 800);
 
         gc.save();
