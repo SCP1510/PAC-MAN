@@ -1,3 +1,4 @@
+//Clase que representa al jugador osease Pac-Man
 package com.juego.pacman.Model;
 
 import javafx.scene.image.Image;
@@ -8,7 +9,10 @@ public class PacMan {
     private double y = 23 * GameMap.TILE_SIZE;
 
     private final double speed = 2;
-    private final double size = GameMap.TILE_SIZE;
+
+    // 🔥 separar tamaño visual y colisión
+    private final double renderSize = GameMap.TILE_SIZE;
+    private final double hitboxSize = GameMap.TILE_SIZE * 0.7;
 
     private int dx = 0;
     private int dy = 0;
@@ -43,31 +47,41 @@ public class PacMan {
 
         // túnel
         int row = (int)(y / GameMap.TILE_SIZE);
-        if (row == 14) { // fila del tunel
+
+        if (row == 14) {//fila del tunel
 
             double maxWidth = GameMap.getCols() * GameMap.TILE_SIZE;
 
-            if (x < -size) {
-                x = maxWidth;
+            //Teletransportaciones
+
+            // izquierda → derecha
+            if (x < -renderSize / 2) {
+                x = maxWidth - renderSize / 2;
             }
 
-            if (x > maxWidth) {
-                x = -size;
+            // derecha → izquierda
+            if (x > maxWidth - renderSize / 2) {
+                x = -renderSize / 2;
             }
         }
+
         // animacion
         if (now - lastFrameTime > frameDelay) {
             currentFrame = (currentFrame + 1) % frames.length;
             lastFrameTime = now;
         }
     }
+
     //Movimiento limitado
     private boolean isWall(double x, double y) {
 
-        int leftCol = (int)(x / GameMap.TILE_SIZE);
-        int rightCol = (int)((x + size) / GameMap.TILE_SIZE);
-        int topRow = (int)(y / GameMap.TILE_SIZE);
-        int bottomRow = (int)((y + size) / GameMap.TILE_SIZE);
+        // 🔥 usar hitbox centrado dentro del sprite
+        double offset = (renderSize - hitboxSize) / 2;
+
+        int leftCol = (int)((x + offset) / GameMap.TILE_SIZE);
+        int rightCol = (int)((x + offset + hitboxSize) / GameMap.TILE_SIZE);
+        int topRow = (int)((y + offset) / GameMap.TILE_SIZE);
+        int bottomRow = (int)((y + offset + hitboxSize) / GameMap.TILE_SIZE);
 
         if (topRow < 0 || bottomRow >= GameMap.getRows() ||
                 leftCol < 0 || rightCol >= GameMap.getCols()) {
@@ -91,8 +105,12 @@ public class PacMan {
         else if (dy == 1) angle = 90;
     }
 
+    // GETTERS GameLoop
     public double getX() { return x; }
     public double getY() { return y; }
     public double getAngle() { return angle; }
     public Image getCurrentFrame() { return frames[currentFrame]; }
+
+    // 🔥 getter para tamaño visual (para dibujar bien)
+    public double getRenderSize() { return renderSize; }
 }

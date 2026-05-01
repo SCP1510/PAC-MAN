@@ -1,4 +1,6 @@
+//Inicializa TODOS los componentes del juego
 package com.juego.pacman;
+
 import com.juego.pacman.Model.PacMan;
 import com.juego.pacman.Logic.GameLoop;
 import com.juego.pacman.Model.GameMap;
@@ -15,10 +17,13 @@ public class Game {
 
     private PacMan pacman;
 
-    public Game() {
+    // tamañp de ventana
+    private final int SCALE = 2;
 
-        int width = GameMap.getCols() * GameMap.TILE_SIZE;
-        int height = GameMap.getRows() * GameMap.TILE_SIZE;
+    public Game() {//inicia el ciclo del juego
+
+        int width = GameMap.getCols() * GameMap.TILE_SIZE * SCALE;
+        int height = GameMap.getRows() * GameMap.TILE_SIZE * SCALE;
 
         root = new Group();
         canvas = new Canvas(width, height);
@@ -29,7 +34,7 @@ public class Game {
         pacman = new PacMan();
     }
 
-    public void start(Scene scene) {
+    public void start(Scene scene) {//inicia el GameLoop
 
         scene.setOnKeyPressed(e -> {
             switch (e.getCode()) {
@@ -52,6 +57,7 @@ public class Game {
             }
         });
 
+        // LOOP
         GameLoop loop = new GameLoop(gc, pacman);
         loop.start();
     }

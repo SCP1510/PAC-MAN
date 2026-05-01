@@ -1,9 +1,8 @@
+//Mapa del juego
 package com.juego.pacman.Model;
 
 public class GameMap {
-
-    public static final int TILE_SIZE = 25;
-
+    public static final int TILE_SIZE = 8;
     public static final int[][] MAP = {
             {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
             {1,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,1},

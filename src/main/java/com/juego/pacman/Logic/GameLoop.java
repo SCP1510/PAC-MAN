@@ -1,3 +1,4 @@
+//Maneja el ciclo principal del juego
 package com.juego.pacman.Logic;
 
 import com.juego.pacman.Model.GameMap;
@@ -8,10 +9,14 @@ import javafx.scene.image.Image;
 
 public class GameLoop extends AnimationTimer {
 
+    //se necesita ejecutar en cada frame
     private GraphicsContext gc;
     private PacMan pacman;
 
     private Image mapImage;
+
+    // tamañp de ventana
+    private final int SCALE = 2;
 
     public GameLoop(GraphicsContext gc, PacMan pacman) {
         this.gc = gc;
@@ -33,35 +38,42 @@ public class GameLoop extends AnimationTimer {
         render();
     }
 
-    private void update(long now) {
+    private void update(long now) {//actualiza la logica
         pacman.update(now);
     }
 
-    private void render() {
+    private void render() {//dibuja los elementos
 
         double width = GameMap.getCols() * GameMap.TILE_SIZE;
         double height = GameMap.getRows() * GameMap.TILE_SIZE;
 
-        gc.clearRect(0, 0, width, height);
+        // limpiar pantalla
+        gc.clearRect(0, 0, width * SCALE, height * SCALE);
 
-        // dibujar el mapa
+        // dibujar el mapa (ESCALADO)
         gc.drawImage(
                 mapImage,
                 0, 0,
-                width,
-                height
+                width * SCALE,
+                height * SCALE
         );
+
         //dibuja el pac man
         drawPacman();
     }
 
     private void drawPacman() {
 
-        double size = GameMap.TILE_SIZE;
+        double size = pacman.getRenderSize() * SCALE;
 
         gc.save();
 
-        gc.translate(pacman.getX() + size / 2, pacman.getY() + size / 2);
+        // posición escalada
+        gc.translate(
+                (pacman.getX() * SCALE) + size / 2,
+                (pacman.getY() * SCALE) + size / 2
+        );
+
         gc.rotate(pacman.getAngle());
 
         gc.drawImage(
