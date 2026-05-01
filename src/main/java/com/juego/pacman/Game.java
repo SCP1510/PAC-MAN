@@ -1,6 +1,7 @@
 package com.juego.pacman;
 import com.juego.pacman.Model.PacMan;
 import com.juego.pacman.Logic.GameLoop;
+import com.juego.pacman.Model.GameMap;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
@@ -15,8 +16,12 @@ public class Game {
     private PacMan pacman;
 
     public Game() {
+
+        int width = GameMap.getCols() * GameMap.TILE_SIZE;
+        int height = GameMap.getRows() * GameMap.TILE_SIZE;
+
         root = new Group();
-        canvas = new Canvas(800, 800);
+        canvas = new Canvas(width, height);
         gc = canvas.getGraphicsContext2D();
 
         root.getChildren().add(canvas);
@@ -26,7 +31,6 @@ public class Game {
 
     public void start(Scene scene) {
 
-        // INPUT
         scene.setOnKeyPressed(e -> {
             switch (e.getCode()) {
                 case W:
@@ -48,7 +52,6 @@ public class Game {
             }
         });
 
-        // LOOP
         GameLoop loop = new GameLoop(gc, pacman);
         loop.start();
     }

@@ -5,18 +5,21 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 public class Main_pacman extends Application {
-
     @Override
     public void start(Stage stage) {
+
         Game game = new Game();
 
-        Scene scene = new Scene(game.getRoot(), 800, 800);
+        Scene scene = new Scene(game.getRoot());
 
-        stage.setTitle("Pac-Man");
         stage.setScene(scene);
+        stage.setTitle("Pac-Man");
+        stage.sizeToScene();
+        stage.setResizable(false);
+
         stage.show();
 
-        game.start(scene); // importante
+        game.start(scene);
     }
 
     public static void main(String[] args) {
