@@ -12,7 +12,7 @@ public class PacMan {
 
     // separar tamaño visual y colisión
     private final double renderSize = GameMap.TILE_SIZE;
-    private final double hitboxSize = GameMap.TILE_SIZE * 0.5;
+    private final double hitboxSize = GameMap.TILE_SIZE * 0.7;
 
     // constantes del túnel
     private static final int TUNNEL_TOP_ROW = 13;
