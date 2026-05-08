@@ -6,6 +6,7 @@ import com.juego.pacman.Model.PacMan;
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
 
 public class GameLoop extends AnimationTimer {
 
@@ -14,31 +15,54 @@ public class GameLoop extends AnimationTimer {
     private PacMan pacman;
 
     private Image mapImage;
+    private Image pelletImage;
+    private Image powerPelletImage;
 
-    // tamañp de ventana
+    // tamaño de ventana
     private final int SCALE = 2;
 
     public GameLoop(GraphicsContext gc, PacMan pacman) {
+
         this.gc = gc;
         this.pacman = pacman;
 
         // mapa
-        var url = getClass().getResource("/assets/map/map-0.png");
+        var mapUrl = getClass().getResource("/assets/map/map-0.png");
 
-        if (url == null) {
+        if (mapUrl == null) {
             throw new RuntimeException("No se encontró map-0.png en resources/assets/map/");
         }
 
-        mapImage = new Image(url.toExternalForm());
+        mapImage = new Image(mapUrl.toExternalForm());
+
+        // pellet normal
+        var pelletUrl = getClass().getResource("/assets/pellets/pellet.png");
+
+        if (pelletUrl == null) {
+            throw new RuntimeException("No se encontró pellet.png");
+        }
+
+        pelletImage = new Image(pelletUrl.toExternalForm());
+
+        // power pellet
+        var powerUrl = getClass().getResource("/assets/pellets/pelletpowerup.png");
+
+        if (powerUrl == null) {
+            throw new RuntimeException("No se encontró pelletpowerup.png");
+        }
+
+        powerPelletImage = new Image(powerUrl.toExternalForm());
     }
 
     @Override
     public void handle(long now) {
+
         update(now);
         render();
     }
 
     private void update(long now) {//actualiza la logica
+
         pacman.update(now);
     }
 
@@ -64,6 +88,9 @@ public class GameLoop extends AnimationTimer {
 
         // pacman
         drawPacman();
+
+        // color score
+        gc.setFill(Color.WHITE);
 
         // score
         gc.fillText(
@@ -112,22 +139,24 @@ public class GameLoop extends AnimationTimer {
                 // pellet normal
                 if (tile == 2) {
 
-                    gc.fillOval(
-                            x + SCALE * 3,
-                            y + SCALE * 3,
-                            SCALE * 2,
-                            SCALE * 2
+                    gc.drawImage(
+                            pelletImage,
+                            x + (GameMap.TILE_SIZE * SCALE * 0.35),
+                            y + (GameMap.TILE_SIZE * SCALE * 0.35),
+                            GameMap.TILE_SIZE * SCALE * 0.3,
+                            GameMap.TILE_SIZE * SCALE * 0.3
                     );
                 }
 
                 // power pellet
                 if (tile == 3) {
 
-                    gc.fillOval(
-                            x + SCALE * 2,
-                            y + SCALE * 2,
-                            SCALE * 4,
-                            SCALE * 4
+                    gc.drawImage(
+                            powerPelletImage,
+                            x + (GameMap.TILE_SIZE * SCALE * 0.2),
+                            y + (GameMap.TILE_SIZE * SCALE * 0.2),
+                            GameMap.TILE_SIZE * SCALE * 0.6,
+                            GameMap.TILE_SIZE * SCALE * 0.6
                     );
                 }
             }
