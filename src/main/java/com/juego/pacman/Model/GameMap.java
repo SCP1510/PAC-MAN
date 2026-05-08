@@ -40,4 +40,29 @@ public class GameMap {
     public static int getRows() { return MAP.length; }
     public static int getCols() { return MAP[0].length; }
     public static int getTile(int row, int col) { return MAP[row][col]; }
+    // pellets
+    public static boolean isPellet(int row, int col) {
+        return MAP[row][col] == 2 || MAP[row][col] == 3;
+    }
+
+    // comer pellets
+    public static int eatPellet(int row, int col) {
+        // evitar salir del mapa
+        if (row < 0 || row >= getRows() ||
+                col < 0 || col >= getCols()) {
+            return 0;
+        }
+
+        if (MAP[row][col] == 2) {
+            MAP[row][col] = 0;
+            return 10;
+        }
+
+        if (MAP[row][col] == 3) {
+            MAP[row][col] = 0;
+            return 50;
+        }
+
+        return 0;
+    }
 }

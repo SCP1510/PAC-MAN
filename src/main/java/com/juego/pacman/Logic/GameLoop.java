@@ -50,16 +50,27 @@ public class GameLoop extends AnimationTimer {
         // limpiar pantalla
         gc.clearRect(0, 0, width * SCALE, height * SCALE);
 
-        // dibujar el mapa (ESCALADO)
+        // dibujar el mapa
         gc.drawImage(
                 mapImage,
-                0, 0,
+                0,
+                0,
                 width * SCALE,
                 height * SCALE
         );
 
-        //dibuja el pac man
+        // pellets
+        drawPellets();
+
+        // pacman
         drawPacman();
+
+        // score
+        gc.fillText(
+                "Score: " + pacman.getScore(),
+                20,
+                20
+        );
     }
 
     private void drawPacman() {
@@ -85,5 +96,41 @@ public class GameLoop extends AnimationTimer {
         );
 
         gc.restore();
+    }
+
+    private void drawPellets() {
+
+        for (int row = 0; row < GameMap.getRows(); row++) {
+
+            for (int col = 0; col < GameMap.getCols(); col++) {
+
+                int tile = GameMap.getTile(row, col);
+
+                double x = col * GameMap.TILE_SIZE * SCALE;
+                double y = row * GameMap.TILE_SIZE * SCALE;
+
+                // pellet normal
+                if (tile == 2) {
+
+                    gc.fillOval(
+                            x + SCALE * 3,
+                            y + SCALE * 3,
+                            SCALE * 2,
+                            SCALE * 2
+                    );
+                }
+
+                // power pellet
+                if (tile == 3) {
+
+                    gc.fillOval(
+                            x + SCALE * 2,
+                            y + SCALE * 2,
+                            SCALE * 4,
+                            SCALE * 4
+                    );
+                }
+            }
+        }
     }
 }
