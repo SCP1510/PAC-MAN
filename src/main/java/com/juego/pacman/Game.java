@@ -1,46 +1,67 @@
-//Inicializa TODOS los componentes del juego
 package com.juego.pacman;
 
 import com.juego.pacman.Logic.GameLoop;
 import com.juego.pacman.Model.GameMap;
-import com.juego.pacman.Model.PacMan;
-
 import com.juego.pacman.Model.Ghosts.Blinky;
 import com.juego.pacman.Model.Ghosts.Clyde;
 import com.juego.pacman.Model.Ghosts.Inky;
 import com.juego.pacman.Model.Ghosts.Pinky;
-
+import com.juego.pacman.Model.PacMan;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.input.KeyCode;
 
 public class Game {
 
-    private final Group root;
-
-    private final Canvas canvas;
-
+    private final Group          root;
+    private final Canvas         canvas;
     private final GraphicsContext gc;
 
     private final PacMan pacman;
 
     private final Blinky blinky;
-    private final Pinky pinky;
-    private final Inky inky;
-    private final Clyde clyde;
+    private final Pinky  pinky;
+    private final Inky   inky;
+    private final Clyde  clyde;
 
-    // escala
+    private final GameLoop loop;
+
+    // nivel actual (1 o 2)
+    private int currentLevel = 1;
+
+    // callbacks externos
+    private final Runnable externalOnWin;
+    private final Runnable externalOnLose;
+
+    // tamaño de ventana
     private final int SCALE = 2;
 
-    public Game() {//inicia el ciclo del juego
+    // posiciones de inicio de cada fantasma (dentro de la casa)
+    private static final double BLINKY_X = 13 * GameMap.TILE_SIZE;
+    private static final double BLINKY_Y = 14 * GameMap.TILE_SIZE;
 
-        int width = GameMap.getCols() * GameMap.TILE_SIZE * SCALE;
-        int height = GameMap.getRows() * GameMap.TILE_SIZE * SCALE;
+    private static final double PINKY_X  = 12 * GameMap.TILE_SIZE;
+    private static final double PINKY_Y  = 14 * GameMap.TILE_SIZE;
+
+    private static final double INKY_X   = 14 * GameMap.TILE_SIZE;
+    private static final double INKY_Y   = 14 * GameMap.TILE_SIZE;
+
+    private static final double CLYDE_X  = 15 * GameMap.TILE_SIZE;
+    private static final double CLYDE_Y  = 14 * GameMap.TILE_SIZE;
+
+    public Game(Runnable onWin, Runnable onLose) {
+
+        this.externalOnWin  = onWin;
+        this.externalOnLose = onLose;
 
         root = new Group();
 
-        canvas = new Canvas(width, height);
+        canvas = new Canvas(
+                GameMap.getCols() * GameMap.TILE_SIZE * SCALE,
+                GameMap.getRows() * GameMap.TILE_SIZE * SCALE
+        );
 
         gc = canvas.getGraphicsContext2D();
 
@@ -48,70 +69,103 @@ public class Game {
 
         pacman = new PacMan();
 
-        // fantasmas
-        blinky = new Blinky(
-                13 * GameMap.TILE_SIZE,
-                11 * GameMap.TILE_SIZE
-        );
+        // CASA DE FANTASMAS
+        blinky = new Blinky(BLINKY_X, BLINKY_Y, pacman);
+        pinky  = new Pinky (PINKY_X,  PINKY_Y,  pacman);
+        inky   = new Inky  (INKY_X,   INKY_Y,   pacman);
+        clyde  = new Clyde (CLYDE_X,  CLYDE_Y,  pacman);
 
-        pinky = new Pinky(
-                12 * GameMap.TILE_SIZE,
-                14 * GameMap.TILE_SIZE
-        );
-
-        inky = new Inky(
-                14 * GameMap.TILE_SIZE,
-                14 * GameMap.TILE_SIZE
-        );
-
-        clyde = new Clyde(
-                15 * GameMap.TILE_SIZE,
-                14 * GameMap.TILE_SIZE
-        );
-    }
-
-    public void start(Scene scene) {//inicia el GameLoop
-
-        scene.setOnKeyPressed(e -> {
-
-            switch (e.getCode()) {
-
-                case W:
-                case UP:
-                    pacman.setDirection(0, -1);
-                    break;
-
-                case S:
-                case DOWN:
-                    pacman.setDirection(0, 1);
-                    break;
-
-                case A:
-                case LEFT:
-                    pacman.setDirection(-1, 0);
-                    break;
-
-                case D:
-                case RIGHT:
-                    pacman.setDirection(1, 0);
-                    break;
-            }
-        });
-
-        // LOOP
-        GameLoop loop = new GameLoop(
+        loop = new GameLoop(
                 gc,
                 pacman,
                 blinky,
                 pinky,
                 inky,
-                clyde
+                clyde,
+                this::handleLevelComplete,
+                this::handleGameOver
         );
+    }
+
+    // todos los pellets comidos
+    private void handleLevelComplete() {
+
+        if (currentLevel == 1) {
+
+            // pasar al nivel 2
+            currentLevel = 2;
+
+            GameMap.resetMap();
+
+            pacman.resetPosition();
+
+            blinky.reset(BLINKY_X, BLINKY_Y, 0L);
+            pinky.reset (PINKY_X,  PINKY_Y,  2_000_000_000L);
+            inky.reset  (INKY_X,   INKY_Y,   4_000_000_000L);
+            clyde.reset (CLYDE_X,  CLYDE_Y,  6_000_000_000L);
+
+            // avisar al loop que empieza nivel 2
+            loop.startLevel2(System.nanoTime());
+
+        } else {
+
+            // nivel 2 completado → GANASTE
+            loop.stop();
+
+            externalOnWin.run();
+        }
+    }
+
+    // sin vidas → perder
+    private void handleGameOver() {
+
+        loop.stop();
+
+        externalOnLose.run();
+    }
+
+    public void start(Scene scene) {
+
+        scene.setOnKeyPressed(event -> {
+
+            KeyCode key = event.getCode();
+
+            if (key == KeyCode.W || key == KeyCode.UP) {
+
+                pacman.setDirection(0, -1);
+            }
+
+            if (key == KeyCode.S || key == KeyCode.DOWN) {
+
+                pacman.setDirection(0, 1);
+            }
+
+            if (key == KeyCode.A || key == KeyCode.LEFT) {
+
+                pacman.setDirection(-1, 0);
+            }
+
+            if (key == KeyCode.D || key == KeyCode.RIGHT) {
+
+                pacman.setDirection(1, 0);
+            }
+        });
 
         loop.start();
     }
 
+    public void stop() {
+
+        loop.stop();
+    }
+
+    public int getScore() {
+
+        return pacman.getScore();
+    }
+
     public Group getRoot() {
+
         return root;
     }
 }

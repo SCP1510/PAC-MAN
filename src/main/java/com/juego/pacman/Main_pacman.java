@@ -9,28 +9,94 @@ import javafx.stage.Stage;
 public class Main_pacman extends Application {
 
     // tamañp de ventana
-    private final int SCALE = 2;
+    private static final int SCALE = 2;
+
+    // referencias estáticas para cambio de escena
+    private static Stage primaryStage;
+    private static Game  currentGame;
 
     @Override
     public void start(Stage stage) {
 
-        Game game = new Game();
+        primaryStage = stage;
 
-        // asegura que el screen sea del tamaño adecuado (ESCALADO)
-        double width = GameMap.getCols() * GameMap.TILE_SIZE * SCALE;
-        double height = GameMap.getRows() * GameMap.TILE_SIZE * SCALE;
-
-        Scene scene = new Scene(game.getRoot(), width, height);
-
-        stage.setScene(scene);
         stage.setTitle("Pac-Man");
-
-        // evita redimensionar
         stage.setResizable(false);
 
-        stage.show();
+        showStartScreen();
 
-        game.start(scene);
+        stage.show();
+    }
+
+    // ======== pantalla de inicio ========
+
+    public static void showStartScreen() {
+
+        double width  = GameMap.getCols() * GameMap.TILE_SIZE * SCALE;
+        double height = GameMap.getRows() * GameMap.TILE_SIZE * SCALE;
+
+        StartScreen screen = new StartScreen(width, height, Main_pacman::showGame);
+
+        primaryStage.setScene(screen.getScene());
+    }
+
+    // ======== iniciar / reiniciar el juego ========
+
+    public static void showGame() {
+
+        // detener juego anterior
+        if (currentGame != null) currentGame.stop();
+
+        // resetear mapa al estado original
+        GameMap.resetMap();
+
+        double width  = GameMap.getCols() * GameMap.TILE_SIZE * SCALE;
+        double height = GameMap.getRows() * GameMap.TILE_SIZE * SCALE;
+
+        currentGame = new Game(
+                Main_pacman::showWinScreen,
+                Main_pacman::showLoseScreen
+        );
+
+        Scene scene = new Scene(currentGame.getRoot(), width, height);
+
+        primaryStage.setScene(scene);
+
+        currentGame.start(scene);
+    }
+
+    // ======== pantalla de victoria ========
+
+    public static void showWinScreen() {
+
+        int score = currentGame != null ? currentGame.getScore() : 0;
+
+        double width  = GameMap.getCols() * GameMap.TILE_SIZE * SCALE;
+        double height = GameMap.getRows() * GameMap.TILE_SIZE * SCALE;
+
+        WinScreen screen = new WinScreen(width, height, score, Main_pacman::showGame);
+
+        primaryStage.setScene(screen.getScene());
+    }
+
+    // ======== pantalla de derrota ========
+
+    public static void showLoseScreen() {
+
+        int score = currentGame != null ? currentGame.getScore() : 0;
+
+        double width  = GameMap.getCols() * GameMap.TILE_SIZE * SCALE;
+        double height = GameMap.getRows() * GameMap.TILE_SIZE * SCALE;
+
+        LoseScreen screen = new LoseScreen(
+                width,
+                height,
+                score,
+                Main_pacman::showGame,
+                Main_pacman::showStartScreen
+        );
+
+        primaryStage.setScene(screen.getScene());
     }
 
     public static void main(String[] args) {

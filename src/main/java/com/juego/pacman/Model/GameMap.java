@@ -2,7 +2,9 @@
 package com.juego.pacman.Model;
 
 public class GameMap {
+
     public static final int TILE_SIZE = 8;
+
     public static final int[][] MAP = {
             {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
             {1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1},
@@ -37,6 +39,19 @@ public class GameMap {
             {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
     };
 
+    // Copia para reiniciar entre partidas
+    private static final int[][] ORIGINAL_MAP;
+
+    static {
+
+        ORIGINAL_MAP = new int[MAP.length][];
+
+        for (int i = 0; i < MAP.length; i++) {
+
+            ORIGINAL_MAP[i] = MAP[i].clone();
+        }
+    }
+
     public static int getRows() {
         return MAP.length;
     }
@@ -69,5 +84,28 @@ public class GameMap {
         }
 
         return 0;
+    }
+
+    // verifica si quedan pellets
+    public static boolean hasRemainingPellets() {
+
+        for (int[] row : MAP) {
+
+            for (int tile : row) {
+
+                if (tile == 2 || tile == 3) return true;
+            }
+        }
+
+        return false;
+    }
+
+    // restaura el mapa para nueva partida
+    public static void resetMap() {
+
+        for (int i = 0; i < MAP.length; i++) {
+
+            MAP[i] = ORIGINAL_MAP[i].clone();
+        }
     }
 }
