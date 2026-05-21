@@ -26,9 +26,16 @@ public class LoseScreen {
             Runnable onMenu
     ) {
 
-        // actualizar récord y saber si es nuevo
+        // detener sonidos del juego
+        SoundManager.stopWaka();
+        SoundManager.stopReturn();
+
+        // reproducir música de fondo
+        SoundManager.playGameplay();
+
+        // actualizar récord
         boolean isNewBest = HighScore.submit(score);
-        int     bestScore = HighScore.get();
+        int bestScore = HighScore.get();
 
         // título
         Text gameOver = new Text("GAME  OVER");
@@ -56,7 +63,7 @@ public class LoseScreen {
             highScoreText.setFont(Font.font("Monospace", 13));
         }
 
-        // retry (parpadeo)
+        // retry
         Text retry = new Text("PRESS  R  TO  RETRY");
         retry.setFill(Color.YELLOW);
         retry.setFont(Font.font("Monospace", FontWeight.BOLD, 16));
@@ -67,18 +74,36 @@ public class LoseScreen {
         menu.setFont(Font.font("Monospace", 12));
 
         // layout
-        VBox root = new VBox(20, gameOver, scoreText, highScoreText, retry, menu);
+        VBox root = new VBox(
+                20,
+                gameOver,
+                scoreText,
+                highScoreText,
+                retry,
+                menu
+        );
+
         root.setAlignment(Pos.CENTER);
         root.setPrefSize(width, height);
+
         root.setBackground(
-                new Background(new BackgroundFill(Color.BLACK, null, null))
+                new Background(
+                        new BackgroundFill(
+                                Color.BLACK,
+                                null,
+                                null
+                        )
+                )
         );
 
         // parpadeo
         Timeline blink = new Timeline(
-                new KeyFrame(Duration.millis(600),
-                        e -> retry.setVisible(!retry.isVisible()))
+                new KeyFrame(
+                        Duration.millis(600),
+                        e -> retry.setVisible(!retry.isVisible())
+                )
         );
+
         blink.setCycleCount(Timeline.INDEFINITE);
         blink.play();
 
@@ -89,18 +114,23 @@ public class LoseScreen {
             if (e.getCode() == KeyCode.R) {
 
                 blink.stop();
+                SoundManager.stopGameplay();
+
                 onRetry.run();
             }
 
             if (e.getCode() == KeyCode.M) {
 
                 blink.stop();
+                SoundManager.stopGameplay();
+
                 onMenu.run();
             }
         });
     }
 
     public Scene getScene() {
+
         return scene;
     }
 }

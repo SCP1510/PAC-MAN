@@ -1,7 +1,6 @@
 package com.juego.pacman;
 
 import javafx.animation.KeyFrame;
-import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -19,88 +18,116 @@ public class WinScreen {
 
     private final Scene scene;
 
-    public WinScreen(double width, double height, int score, Runnable onPlayAgain) {
+    public WinScreen(
+            double width,
+            double height,
+            int score,
+            Runnable onNextLevel,
+            Runnable onMenu
+    ) {
 
-        // actualizar récord
-        boolean isNewBest = HighScore.submit(score);
-        int     bestScore = HighScore.get();
+        // detener sonidos molestos
+        SoundManager.stopWaka();
+        SoundManager.stopReturn();
 
-        // título
-        Text youWin = new Text("YOU  WIN!");
-        youWin.setFill(Color.YELLOW);
-        youWin.setFont(Font.font("Monospace", FontWeight.BOLD, 58));
+        // música fondo
+        SoundManager.playGameplay();
 
-        // subtítulo
-        Text sub = new Text("¡Completaste los 2 niveles!");
-        sub.setFill(Color.ORANGE);
-        sub.setFont(Font.font("Monospace", 12));
+        Text win = new Text("YOU  WIN!");
+        win.setFill(Color.YELLOW);
+        win.setFont(Font.font("Monospace", FontWeight.BOLD, 52));
 
-        // score actual
         Text scoreText = new Text("SCORE:  " + score);
         scoreText.setFill(Color.WHITE);
         scoreText.setFont(Font.font("Monospace", FontWeight.BOLD, 22));
 
-        // high score
-        Text highScoreText;
+        Text continueText =
+                new Text("PRESS  N  FOR  NEXT  LEVEL");
 
-        if (isNewBest) {
+        continueText.setFill(Color.LIME);
 
-            highScoreText = new Text("★  NEW  BEST  SCORE!  ★");
-            highScoreText.setFill(Color.GOLD);
-            highScoreText.setFont(Font.font("Monospace", FontWeight.BOLD, 14));
+        continueText.setFont(
+                Font.font(
+                        "Monospace",
+                        FontWeight.BOLD,
+                        16
+                )
+        );
 
-        } else {
+        Text menuText =
+                new Text("PRESS  M  FOR  MENU");
 
-            highScoreText = new Text("BEST  SCORE:  " + bestScore);
-            highScoreText.setFill(Color.color(0.7, 0.7, 0.7));
-            highScoreText.setFont(Font.font("Monospace", 13));
-        }
+        menuText.setFill(
+                Color.color(0.6,0.6,0.6)
+        );
 
-        // jugar de nuevo (parpadeo)
-        Text playAgain = new Text("PRESS  R  TO  PLAY  AGAIN");
-        playAgain.setFill(Color.CYAN);
-        playAgain.setFont(Font.font("Monospace", FontWeight.BOLD, 16));
+        menuText.setFont(
+                Font.font("Monospace",12)
+        );
 
-        // layout
-        VBox root = new VBox(18, youWin, sub, scoreText, highScoreText, playAgain);
+        VBox root = new VBox(
+                20,
+                win,
+                scoreText,
+                continueText,
+                menuText
+        );
+
         root.setAlignment(Pos.CENTER);
-        root.setPrefSize(width, height);
+
+        root.setPrefSize(width,height);
+
         root.setBackground(
-                new Background(new BackgroundFill(Color.BLACK, null, null))
+                new Background(
+                        new BackgroundFill(
+                                Color.BLACK,
+                                null,
+                                null
+                        )
+                )
         );
 
-        // animación pulsante
-        ScaleTransition pulse = new ScaleTransition(Duration.millis(800), youWin);
-        pulse.setFromX(1.0);
-        pulse.setToX(1.1);
-        pulse.setFromY(1.0);
-        pulse.setToY(1.1);
-        pulse.setAutoReverse(true);
-        pulse.setCycleCount(ScaleTransition.INDEFINITE);
-        pulse.play();
-
-        // parpadeo
         Timeline blink = new Timeline(
-                new KeyFrame(Duration.millis(600),
-                        e -> playAgain.setVisible(!playAgain.isVisible()))
+                new KeyFrame(
+                        Duration.millis(600),
+                        e -> continueText.setVisible(
+                                !continueText.isVisible()
+                        )
+                )
         );
-        blink.setCycleCount(Timeline.INDEFINITE);
+
+        blink.setCycleCount(
+                Timeline.INDEFINITE
+        );
+
         blink.play();
 
-        scene = new Scene(root, width, height);
+        scene = new Scene(root,width,height);
 
         scene.setOnKeyPressed(e -> {
 
-            if (e.getCode() == KeyCode.R) {
+            if (e.getCode() == KeyCode.N) {
 
-                pulse.stop();
                 blink.stop();
-                onPlayAgain.run();
+
+                SoundManager.stopGameplay();
+
+                onNextLevel.run();
+            }
+
+            if (e.getCode() == KeyCode.M) {
+
+                blink.stop();
+
+                SoundManager.stopGameplay();
+
+                onMenu.run();
             }
         });
     }
 
     public Scene getScene() {
+
         return scene;
     }
 }

@@ -28,7 +28,7 @@ public class Main_pacman extends Application {
         stage.show();
     }
 
-    // ======== pantalla de inicio ========
+    // pantalla de inicio
 
     public static void showStartScreen() {
 
@@ -40,7 +40,7 @@ public class Main_pacman extends Application {
         primaryStage.setScene(screen.getScene());
     }
 
-    // ======== iniciar / reiniciar el juego ========
+    // iniciar o detener el juego
 
     public static void showGame() {
 
@@ -65,21 +65,36 @@ public class Main_pacman extends Application {
         currentGame.start(scene);
     }
 
+    // win screen
+
     // ======== pantalla de victoria ========
 
     public static void showWinScreen() {
 
         int score = currentGame != null ? currentGame.getScore() : 0;
 
-        double width  = GameMap.getCols() * GameMap.TILE_SIZE * SCALE;
-        double height = GameMap.getRows() * GameMap.TILE_SIZE * SCALE;
+        double width  =
+                GameMap.getCols()
+                        * GameMap.TILE_SIZE
+                        * SCALE;
 
-        WinScreen screen = new WinScreen(width, height, score, Main_pacman::showGame);
+        double height =
+                GameMap.getRows()
+                        * GameMap.TILE_SIZE
+                        * SCALE;
+
+        WinScreen screen = new WinScreen(
+                width,
+                height,
+                score,
+                Main_pacman::showGame,
+                Main_pacman::showStartScreen
+        );
 
         primaryStage.setScene(screen.getScene());
     }
 
-    // ======== pantalla de derrota ========
+    // lose screen
 
     public static void showLoseScreen() {
 

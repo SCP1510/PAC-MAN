@@ -4,6 +4,7 @@ package com.juego.pacman.Logic;
 import com.juego.pacman.Model.Fruit;
 import com.juego.pacman.Model.GameMap;
 import com.juego.pacman.Model.PacMan;
+import com.juego.pacman.SoundManager;
 
 import com.juego.pacman.Model.Ghosts.Blinky;
 import com.juego.pacman.Model.Ghosts.Clyde;
@@ -40,51 +41,80 @@ public class GameLoop extends AnimationTimer {
     private final Image pelletImage;
     private final Image powerPelletImage;
 
-    // tamaño de ventana
+    //tamaño de ventana
     private final int SCALE = 2;
 
-    // callbacks
+    //callbacks
     private final Runnable onLevelComplete;
     private final Runnable onLose;
 
-    // estado
+    //estado
     private int     currentLevel   = 1;
     private boolean pelletsCleared = false;
     private boolean loseTriggered  = false;
 
-    // transición de nivel
+    //transición de nivel
     private boolean levelTransition = false;
     private long    transitionStart = 0;
     private static final long TRANSITION_DURATION = 3_000_000_000L;
 
-    // combo de fantasmas comidos en un mismo fright
+    //combo de fantasmas comidos en un mismo fright
     private int ghostCombo = 0;
 
-    // fruta activa
+    //fruta activa
     private final Fruit activeFruit = new Fruit();
 
-    private int  fruitIndex       = 0;
-    private long level2StartTime  = 0;
+    private int  fruitIndex    = 0;
+    private long levelStartTime = 0;
 
     private final Random rng = new Random();
 
-    // tipos de fruta nivel 2 (orden de aparición)
-    private static final Fruit.PowerType[] LEVEL2_FRUITS = {
-            Fruit.PowerType.CHERRY,
-            Fruit.PowerType.FRESA,
-            Fruit.PowerType.ORANGE,
-            Fruit.PowerType.APPLE,
-            Fruit.PowerType.GUAYABA
+    //sonido de retorno: se dispara cuando hay al menos un fantasma muerto
+    private boolean anyDeadLastFrame = false;
+
+    //frutas por nivel (nivel 2 y nivel 3)
+    private static final Fruit.PowerType[][] LEVEL_FRUITS = {
+            //nivel 2
+            {
+                    Fruit.PowerType.CHERRY,
+                    Fruit.PowerType.FRESA,
+                    Fruit.PowerType.ORANGE,
+                    Fruit.PowerType.APPLE,
+                    Fruit.PowerType.GUAYABA
+            },
+            //nivel 3 (más rápido, más valioso)
+            {
+                    Fruit.PowerType.ORANGE,
+                    Fruit.PowerType.APPLE,
+                    Fruit.PowerType.GUAYABA,
+                    Fruit.PowerType.FRESA,
+                    Fruit.PowerType.CHERRY
+            }
     };
 
-    // segundos desde inicio del nivel 2 en los que aparece cada fruta
-    private static final long[] FRUIT_SPAWN_OFFSETS = {
-            5_000_000_000L,
-            20_000_000_000L,
-            35_000_000_000L,
-            50_000_000_000L,
-            65_000_000_000L
+    //offsets en nanosegundos para cada fruta por nivel
+    private static final long[][] LEVEL_FRUIT_OFFSETS = {
+            //nivel 2
+            {
+                    5_000_000_000L,
+                    20_000_000_000L,
+                    35_000_000_000L,
+                    50_000_000_000L,
+                    65_000_000_000L
+            },
+            //nivel 3 (más rápido)
+            {
+                    3_000_000_000L,
+                    14_000_000_000L,
+                    26_000_000_000L,
+                    39_000_000_000L,
+                    53_000_000_000L
+            }
     };
+
+    //arrays activos según nivel
+    private Fruit.PowerType[] currentFruits  = null;
+    private long[]            currentOffsets = null;
 
     public GameLoop(
             GraphicsContext gc,
@@ -111,17 +141,17 @@ public class GameLoop extends AnimationTimer {
 
         ghosts = Arrays.asList(blinky, pinky, inky, clyde);
 
-        // mapa
+        //mapa
         var mapUrl = getClass().getResource("/assets/map/map-0.png");
         if (mapUrl == null) throw new RuntimeException("No se encontró map-0.png");
         mapImage = new Image(mapUrl.toExternalForm());
 
-        // pellet normal
+        //pellet normal
         var pelletUrl = getClass().getResource("/assets/pellets/pellet.png");
         if (pelletUrl == null) throw new RuntimeException("No se encontró pellet.png");
         pelletImage = new Image(pelletUrl.toExternalForm());
 
-        // power pellet
+        //power pellet
         var powerUrl = getClass().getResource("/assets/pellets/pelletpowerup.png");
         if (powerUrl == null) throw new RuntimeException("No se encontró pelletpowerup.png");
         powerPelletImage = new Image(powerUrl.toExternalForm());
@@ -130,15 +160,15 @@ public class GameLoop extends AnimationTimer {
     @Override
     public void handle(long now) {
 
-        // transición entre niveles: solo mostrar mensaje
+        //transición entre niveles: solo mostrar mensaje
         if (levelTransition) {
 
             renderTransition();
 
             if (now - transitionStart >= TRANSITION_DURATION) {
-
                 levelTransition = false;
                 pacman.setFrozen(false);
+                SoundManager.playGameplay();
             }
 
             return;
@@ -153,7 +183,12 @@ public class GameLoop extends AnimationTimer {
 
         pacman.update(now);
 
-        // game over (sin vidas, animación terminada)
+        //sonido waka al comer pellet
+        if (pacman.justAtePellet()) {
+            SoundManager.playWaka();
+        }
+
+        //game over (sin vidas, animación terminada)
         if (!loseTriggered && pacman.isGameOver()) {
 
             loseTriggered = true;
@@ -164,29 +199,39 @@ public class GameLoop extends AnimationTimer {
 
         if (pacman.isGameOver()) return;
 
-        // actualizar fantasmas
+        //actualizar fantasmas
         blinky.update(now);
         pinky.update(now);
         inky.update(now);
         clyde.update(now);
 
-        // power pellet comido
+        //sonido de retorno de ojos (se toca mientras haya fantasmas muertos)
+        boolean anyDead = ghosts.stream().anyMatch(Ghost::isDead);
+
+        if (anyDead && !anyDeadLastFrame) {
+            SoundManager.startReturn();
+        } else if (!anyDead && anyDeadLastFrame) {
+            SoundManager.stopReturn();
+        }
+
+        anyDeadLastFrame = anyDead;
+
+        //power pellet comido
         if (pacman.hasEatenPowerPellet()) {
 
             frightenGhosts(now);
             pacman.resetPowerPellet();
         }
 
-        // colisiones
+        //colisiones
         checkGhostCollisions(now);
 
-        // frutas nivel 2
-        if (currentLevel == 2) {
-
+        //frutas niveles 2 y 3
+        if (currentLevel >= 2) {
             handleFruits(now);
         }
 
-        // victoria: todos los pellets comidos
+        //victoria: todos los pellets comidos
         if (!pelletsCleared && !GameMap.hasRemainingPellets()) {
 
             pelletsCleared = true;
@@ -194,21 +239,20 @@ public class GameLoop extends AnimationTimer {
         }
     }
 
-    // ======== FANTASMAS ASUSTADOS ========
-
+    //fantasmas asustados.
     private void frightenGhosts(long now) {
 
-        // reset combo al inicio de cada fright
+        //reset combo al inicio de cada fright
         ghostCombo = 0;
 
-        for (Ghost ghost : ghosts) {
+        SoundManager.playPowerPellet();
 
+        for (Ghost ghost : ghosts) {
             if (!ghost.isDead()) ghost.frighten(now);
         }
     }
 
-    // ======== COLISIONES PAC-MAN / FANTASMAS ========
-
+    //colisiones Pac-Man / fantasmas.
     private void checkGhostCollisions(long now) {
 
         if (pacman.isDying()) return;
@@ -224,7 +268,7 @@ public class GameLoop extends AnimationTimer {
 
                 if (ghost.isFrightened()) {
 
-                    // Comer fantasma: puntuación acumulada 200→400→800→1600
+                    //comer fantasma: puntuación acumulada 200→400→800→1600
                     ghostCombo++;
 
                     int eatScore = (int)(200 * Math.pow(2, ghostCombo - 1));
@@ -233,13 +277,15 @@ public class GameLoop extends AnimationTimer {
 
                     ghost.eaten();
 
+                    SoundManager.playGhostEaten();
+
                 } else if (!ghost.isDead()) {
 
                     pacman.die(now);
 
-                    // Respawn de fantasmas si quedan vidas
-                    if (pacman.getLives() > 0) {
+                    SoundManager.playDeath();
 
+                    if (pacman.getLives() > 0) {
                         resetGhostsAfterDeath();
                     }
                 }
@@ -255,11 +301,9 @@ public class GameLoop extends AnimationTimer {
         clyde.reset();
     }
 
-    // ======== FRUTAS NIVEL 2 ========
-
+    //frutas niveles 2 y 3.
     private void handleFruits(long now) {
 
-        // comprobar fruta activa
         if (activeFruit.isActive()) {
 
             if (activeFruit.isExpired(now)) {
@@ -268,50 +312,67 @@ public class GameLoop extends AnimationTimer {
 
             } else if (activeFruit.isEatenBy(pacman.getX(), pacman.getY())) {
 
-                // collect devuelve los puntos; addScore los aplica con multiplicador
                 int pts = activeFruit.collect(pacman, ghosts, now);
                 pacman.addScore(pts);
+
+                SoundManager.playFruitEaten();
             }
         }
 
-        // aparecer siguiente fruta en posición aleatoria del mapa
-        if (!activeFruit.isActive() && fruitIndex < LEVEL2_FRUITS.length) {
+        //aparecer siguiente fruta en posición aleatoria del mapa
+        if (!activeFruit.isActive() &&
+                currentFruits != null &&
+                fruitIndex < currentFruits.length) {
 
-            long elapsed = now - level2StartTime;
+            long elapsed = now - levelStartTime;
 
-            if (elapsed >= FRUIT_SPAWN_OFFSETS[fruitIndex]) {
-
-                activeFruit.spawnRandom(LEVEL2_FRUITS[fruitIndex], now);
-
+            if (elapsed >= currentOffsets[fruitIndex]) {
+                activeFruit.spawnRandom(currentFruits[fruitIndex], now);
                 fruitIndex++;
             }
         }
     }
 
-    // ======== INICIAR NIVEL 2 ========
+    //iniciar un nivel (llamado desde Game.java al completar el anterior)
+    public void startLevel(int level, long now) {
 
-    public void startLevel2(long now) {
+        currentLevel   = level;
+        pelletsCleared = false;
+        fruitIndex     = 0;
+        ghostCombo     = 0;
+        levelStartTime = now;
+        anyDeadLastFrame = false;
 
-        currentLevel    = 2;
-        pelletsCleared  = false;
-        fruitIndex      = 0;
-        ghostCombo      = 0;
-        level2StartTime = now;
+        //índice en el array de configs (nivel 2 → 0, nivel 3 → 1)
+        int idx = level - 2;
 
-        // fantasmas más rápidos
+        if (idx >= 0 && idx < LEVEL_FRUITS.length) {
+
+            currentFruits  = LEVEL_FRUITS[idx];
+            currentOffsets = LEVEL_FRUIT_OFFSETS[idx];
+
+        } else {
+
+            currentFruits  = null;
+            currentOffsets = null;
+        }
+
+        //velocidad de fantasmas (acumulativa)
         blinky.increaseNormalSpeed(1.2);
         pinky.increaseNormalSpeed(1.2);
         inky.increaseNormalSpeed(1.2);
         clyde.increaseNormalSpeed(1.2);
 
-        // mensaje de transición
+        //mensaje de transición
         levelTransition = true;
         transitionStart = now;
+
         pacman.setFrozen(true);
+
+        SoundManager.stopGameplay();
     }
 
-    // ======== RENDER ========
-
+    //render.
     private void render(long now) {
 
         double width  = GameMap.getCols() * GameMap.TILE_SIZE;
@@ -323,9 +384,8 @@ public class GameLoop extends AnimationTimer {
 
         drawPellets();
 
-        // fruta nivel 2
-        if (currentLevel == 2 && activeFruit.isActive()) {
-
+        //fruta (niveles 2 y 3)
+        if (currentLevel >= 2 && activeFruit.isActive()) {
             drawFruit();
         }
 
@@ -355,15 +415,18 @@ public class GameLoop extends AnimationTimer {
 
         gc.setFont(Font.font("Monospace", FontWeight.BOLD, 22));
         gc.setFill(Color.YELLOW);
-        gc.fillText("NIVEL 2", cx - 50, cy - 15);
+        gc.fillText("NIVEL " + currentLevel, cx - 55, cy - 15);
 
         gc.setFont(Font.font("Monospace", FontWeight.BOLD, 12));
         gc.setFill(Color.WHITE);
         gc.fillText("¡PREPÁRATE!", cx - 44, cy + 8);
 
-        gc.setFont(Font.font("Monospace", 9));
-        gc.setFill(Color.CYAN);
-        gc.fillText("Recoge frutas para poderes y puntos extra", cx - 110, cy + 28);
+        if (currentLevel >= 2) {
+
+            gc.setFont(Font.font("Monospace", 9));
+            gc.setFill(Color.CYAN);
+            gc.fillText("Recoge frutas para poderes y puntos extra", cx - 110, cy + 28);
+        }
     }
 
     private void drawPacman() {
@@ -381,10 +444,8 @@ public class GameLoop extends AnimationTimer {
 
         gc.drawImage(
                 pacman.getCurrentFrame(),
-                -size / 2,
-                -size / 2,
-                size,
-                size
+                -size / 2, -size / 2,
+                size, size
         );
 
         gc.restore();
@@ -398,8 +459,7 @@ public class GameLoop extends AnimationTimer {
                 ghost.getCurrentFrame(),
                 ghost.getX() * SCALE,
                 ghost.getY() * SCALE,
-                size,
-                size
+                size, size
         );
     }
 
@@ -411,8 +471,7 @@ public class GameLoop extends AnimationTimer {
                 activeFruit.getSprite(),
                 activeFruit.getX() * SCALE,
                 activeFruit.getY() * SCALE,
-                size,
-                size
+                size, size
         );
     }
 
@@ -427,7 +486,7 @@ public class GameLoop extends AnimationTimer {
                 double x = col * GameMap.TILE_SIZE * SCALE;
                 double y = row * GameMap.TILE_SIZE * SCALE;
 
-                // pellet normal → 10 pts
+                //pellet normal → 10 pts
                 if (tile == 2) {
 
                     gc.drawImage(
@@ -439,7 +498,7 @@ public class GameLoop extends AnimationTimer {
                     );
                 }
 
-                // power pellet → 50 pts + fantasmas azules
+                //power pellet → 50 pts + fantasmas azules
                 if (tile == 3) {
 
                     gc.drawImage(
@@ -459,45 +518,41 @@ public class GameLoop extends AnimationTimer {
         double width  = GameMap.getCols() * GameMap.TILE_SIZE * SCALE;
         double height = GameMap.getRows() * GameMap.TILE_SIZE * SCALE;
 
-        // Score principal
+        //score principal
         gc.setFont(Font.font("Monospace", FontWeight.BOLD, 9));
         gc.setFill(Color.WHITE);
         gc.fillText("SCORE: " + pacman.getScore(), 6, 10);
 
-        // Nivel
+        //nivel
         gc.setFill(Color.YELLOW);
         gc.fillText("LVL " + currentLevel, width / 2 - 14, 10);
 
-        // Vidas
+        //vidas
         gc.setFill(Color.WHITE);
         gc.fillText("LIVES: " + pacman.getLives(), width - 62, 10);
 
-        // Indicadores de poder activo (zona inferior)
+        //indicadores de poder activo (zona inferior)
         double powerY = height - 6;
 
         if (pacman.isSpeedBoostActive()) {
-
             gc.setFill(Color.YELLOW);
-            gc.fillText("⚡SPEED", 4, powerY);
+            gc.fillText("SPEED", 4, powerY);
         }
 
         if (pacman.hasShield()) {
-
             gc.setFill(Color.CYAN);
-            gc.fillText("🛡SHIELD", 52, powerY);
+            gc.fillText("SHIELD", 44, powerY);
         }
 
         if (pacman.isDoublePointsActive()) {
-
             gc.setFill(Color.ORANGE);
-            gc.fillText("2xPTS", 108, powerY);
+            gc.fillText("2xPTS", 94, powerY);
         }
 
-        // Indicador fright
+        //indicador fright
         boolean anyFright = ghosts.stream().anyMatch(Ghost::isFrightened);
 
         if (anyFright) {
-
             gc.setFont(Font.font("Monospace", FontWeight.BOLD, 9));
             gc.setFill(Color.LIGHTBLUE);
             gc.fillText("FRIGHT!", width - 52, powerY);

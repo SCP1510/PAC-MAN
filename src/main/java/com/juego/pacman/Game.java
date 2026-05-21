@@ -15,20 +15,21 @@ import javafx.scene.input.KeyCode;
 
 public class Game {
 
-    private final Group          root;
-    private final Canvas         canvas;
+    private final Group  root;
+    private final Canvas canvas;
     private final GraphicsContext gc;
 
     private final PacMan pacman;
 
     private final Blinky blinky;
-    private final Pinky  pinky;
-    private final Inky   inky;
-    private final Clyde  clyde;
+    private final Pinky pinky;
+    private final Inky inky;
+    private final Clyde clyde;
 
     private final GameLoop loop;
+    final boolean[] firstMove = { false };
 
-    // nivel actual (1 o 2)
+    // nivel actual
     private int currentLevel = 1;
 
     // callbacks externos
@@ -90,10 +91,10 @@ public class Game {
     // todos los pellets comidos
     private void handleLevelComplete() {
 
-        if (currentLevel == 1) {
+        if (currentLevel < 3) {
 
-            // pasar al nivel 2
-            currentLevel = 2;
+            // siguiente nivel
+            currentLevel++;
 
             GameMap.resetMap();
 
@@ -104,19 +105,21 @@ public class Game {
             inky.reset  (INKY_X,   INKY_Y,   4_000_000_000L);
             clyde.reset (CLYDE_X,  CLYDE_Y,  6_000_000_000L);
 
-            // avisar al loop que empieza nivel 2
-            loop.startLevel2(System.nanoTime());
+            // iniciar nuevo nivel
+            loop.startLevel(
+                    currentLevel,
+                    System.nanoTime()
+            );
 
         } else {
 
-            // nivel 2 completado → GANASTE
+            // nivel 3 completado
             loop.stop();
 
             externalOnWin.run();
         }
     }
 
-    // sin vidas → perder
     private void handleGameOver() {
 
         loop.stop();
@@ -125,10 +128,28 @@ public class Game {
     }
 
     public void start(Scene scene) {
-
         scene.setOnKeyPressed(event -> {
 
             KeyCode key = event.getCode();
+
+            boolean movementKey =
+                    key == KeyCode.W
+                            || key == KeyCode.A
+                            || key == KeyCode.S
+                            || key == KeyCode.D
+                            || key == KeyCode.UP
+                            || key == KeyCode.DOWN
+                            || key == KeyCode.LEFT
+                            || key == KeyCode.RIGHT;
+
+            // primer movimiento real
+            if (movementKey && !firstMove[0]) {
+
+                firstMove[0] = true;
+
+                SoundManager.stopStart();
+
+            }
 
             if (key == KeyCode.W || key == KeyCode.UP) {
 

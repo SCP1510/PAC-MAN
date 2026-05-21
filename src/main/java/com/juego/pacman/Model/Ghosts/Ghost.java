@@ -269,6 +269,30 @@ public class Ghost {
         // evitar empalmes
         if (collidesWithGhost(nextX, nextY)) {
 
+            List<int[]> dirs = getPossibleDirections();
+
+            dirs.removeIf(d ->
+                    d[0] == -dx
+                            &&
+                            d[1] == -dy
+            );
+
+            if (!dirs.isEmpty()) {
+
+                int[] chosen =
+                        dirs.get(
+                                random.nextInt(
+                                        dirs.size()
+                                )
+                        );
+
+                dx = chosen[0];
+                dy = chosen[1];
+
+                nextDx = dx;
+                nextDy = dy;
+            }
+
             return;
         }
 
@@ -339,7 +363,6 @@ public class Ghost {
     ) {
 
         if (pacman.getGhosts() == null) {
-
             return false;
         }
 
@@ -355,10 +378,13 @@ public class Ghost {
                             nextY - other.getY()
                     );
 
-            if (
-                    dist <
-                            GameMap.TILE_SIZE * 0.75
-            ) {
+            // MÁS PEQUEÑO para que no se bloqueen
+            if (dist < GameMap.TILE_SIZE * 0.45) {
+
+                // EN FRIGHT NO BLOQUEAR
+                if (frightened) {
+                    continue;
+                }
 
                 return true;
             }
@@ -781,10 +807,6 @@ public class Ghost {
 
         deadPathIndex = 0;
     }
-
-    // =====================================================
-    // GRID
-    // =====================================================
 
     protected void snapToGrid() {
 

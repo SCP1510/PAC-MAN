@@ -19,7 +19,7 @@ public class StartScreen {
     private final Scene scene;
 
     public StartScreen(double width, double height, Runnable onStart) {
-
+        SoundManager.playGameplay();
         // título
         Text title = new Text("PAC-MAN");
         title.setFill(Color.YELLOW);
@@ -40,8 +40,8 @@ public class StartScreen {
         controls.setFill(Color.CYAN);
         controls.setFont(Font.font("Monospace", 12));
 
-        // nivel 2 hint
-        Text lvl2hint = new Text("— Nivel 2: recoge frutas para obtener poderes —");
+        // hint
+        Text lvl2hint = new Text("— Recoge frutas para obtener poderes —");
         lvl2hint.setFill(Color.color(0.6, 0.6, 0.6));
         lvl2hint.setFont(Font.font("Monospace", 10));
 
@@ -66,9 +66,9 @@ public class StartScreen {
         scene.setOnKeyPressed(e -> {
 
             if (e.getCode() == KeyCode.ENTER) {
-
                 blink.stop();
-
+                SoundManager.stopGameplay();
+                SoundManager.playStart();
                 onStart.run();
             }
         });
