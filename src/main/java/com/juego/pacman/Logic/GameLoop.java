@@ -172,9 +172,18 @@ public class GameLoop extends AnimationTimer {
     private void update(long now) {
         pacman.update(now);
 
-        // sonido waka al comer pellet
-        if (pacman.justAtePellet()) SoundManager.playWaka();
-
+        if (!pacman.isDying() && !pacman.isGameOver()) {
+            if (pacman.getDx() != 0 || pacman.getDy() != 0) {
+                SoundManager.stopGameplay();
+                SoundManager.playWaka();
+            } else {
+                SoundManager.stopWaka();
+                SoundManager.playGameplay();
+            }
+        } else {
+            SoundManager.stopWaka();
+            SoundManager.stopGameplay();
+        }
         // game over (sin vidas, animacion terminada)
         if (!loseTriggered && pacman.isGameOver()) {
             loseTriggered = true;

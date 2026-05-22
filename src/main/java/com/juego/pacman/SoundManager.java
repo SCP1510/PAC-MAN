@@ -94,7 +94,11 @@ public class SoundManager {
     public static void playGameplay() {
         stopStart();
         if (gameplayPlayer == null) return;
-        if (gameplayPlayer.getStatus() == MediaPlayer.Status.PLAYING) return;
+
+        if (gameplayPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
+            return;
+        }
+
         gameplayPlayer.play();
     }
 
@@ -105,17 +109,20 @@ public class SoundManager {
     public static void playWaka() {
         if (wakaPlayer == null) return;
 
-        long now = System.currentTimeMillis();
-        if (now - lastWakaTime < 90) return;
+        wakaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
 
-        lastWakaTime = now;
-        wakaPlayer.stop();
-        wakaPlayer.seek(Duration.ZERO);
+        if (wakaPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
+            return;
+        }
+
         wakaPlayer.play();
     }
 
     public static void stopWaka() {
-        if (wakaPlayer != null) wakaPlayer.stop();
+        if (wakaPlayer != null) {
+            wakaPlayer.stop();
+            wakaPlayer.seek(Duration.ZERO);
+        }
     }
 
     public static void playPowerPellet() { playOnce(powerPlayer); }

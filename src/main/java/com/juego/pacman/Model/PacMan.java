@@ -55,18 +55,18 @@ public class PacMan {
 
     private long dyingStart = 0;
 
-    private final long dyingDuration   = 2_000_000_000L;
-    private int        deathFrame      = 0;
-    private long       lastDeathFrame  = 0;
+    private final long dyingDuration = 2_000_000_000L;
+    private int deathFrame = 0;
+    private long lastDeathFrame = 0;
     private final long deathFrameDelay = 120_000_000L;
 
     // poder velocidad
     private boolean speedBoostActive = false;
-    private long    speedBoostEnd    = 0;
+    private long speedBoostEnd = 0;
 
     // puntos dobles
     private boolean doublePointsActive = false;
-    private long    doublePointsEnd    = 0;
+    private long doublePointsEnd = 0;
 
     // escudo
     private boolean shieldActive = false;
@@ -266,6 +266,7 @@ public class PacMan {
     }
 
     // colisiones paredes
+    // colisiones paredes
     private boolean isWall(double x, double y) {
         double offset = (renderSize - hitboxSize) / 2;
 
@@ -276,16 +277,25 @@ public class PacMan {
 
         if (topRow < 0 || bottomRow >= GameMap.getRows()) return true;
 
-        if (!inTunnel()) {
+        // --- SOLUCIÓN DEL TÚNEL EN VELOCIDADES ALTAS ---
+        // Si está en las filas del túnel y se sale de los bordes del mapa,
+        // permitimos el movimiento libre para que el método update() haga el teletransporte.
+        if (inTunnel()) {
+            if (leftCol < 0 || rightCol >= GameMap.getCols()) {
+                return false;
+            }
+        } else {
+            // Si no está en el túnel y se sale del mapa, sí es una pared invisible
             if (leftCol < 0 || rightCol >= GameMap.getCols()) return true;
         }
 
-        if (leftCol < 0 || rightCol >= GameMap.getCols()) return false;
+        int topLeft     = GameMap.getTile(topRow, leftCol);
+        int topRight    = GameMap.getTile(topRow, rightCol);
+        int bottomLeft  = GameMap.getTile(bottomRow, leftCol);
+        int bottomRight = GameMap.getTile(bottomRow, rightCol);
 
-        return GameMap.getTile(topRow, leftCol)     == 1 ||
-                GameMap.getTile(topRow, rightCol)    == 1 ||
-                GameMap.getTile(bottomRow, leftCol)  == 1 ||
-                GameMap.getTile(bottomRow, rightCol) == 1;
+        return topLeft == 1 || topRight == 1 || bottomLeft == 1 || bottomRight == 1 ||
+                topLeft == 4 || topRight == 4 || bottomLeft == 4 || bottomRight == 4;
     }
 
     // tunel
