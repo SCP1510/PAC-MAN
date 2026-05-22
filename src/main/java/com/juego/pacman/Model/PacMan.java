@@ -12,7 +12,7 @@ public class PacMan {
     private double y = 23 * GameMap.TILE_SIZE;
 
     //velocidad base
-    private double baseSpeed = 1;
+    private double baseSpeed = 1.5;
 
     private List<Ghost> ghosts;
 
