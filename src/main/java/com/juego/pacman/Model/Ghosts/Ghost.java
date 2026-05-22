@@ -30,447 +30,233 @@ public class Ghost {
     protected int nextDx = 0;
     protected int nextDy = -1;
 
-    // hitbox
-    protected double hitboxSize =
-            GameMap.TILE_SIZE * 0.7;
+    // Sistema de objetivos por Azulejo (Tile-Targeting)
+    protected double targetX;
+    protected double targetY;
+    protected boolean hasTarget = false;
 
-    protected double renderSize =
-            GameMap.TILE_SIZE;
+    // Hitbox y renderizado
+    protected double hitboxSize = GameMap.TILE_SIZE * 0.7;
+    protected double renderSize = GameMap.TILE_SIZE;
 
     protected PacMan pacman;
 
     protected boolean frightened = false;
     protected boolean dead = false;
     protected boolean released = false;
-
     protected boolean slow = false;
 
     protected long slowEnd = 0;
-
     protected long releaseTime;
-
     protected long frightenedStart = 0;
 
     protected int currentFrame = 0;
-
     protected long lastFrameTime = 0;
+    protected final long frameDelay = 220_000_000L; // Ajuste smooth de animación
 
-    // smooth
-    protected final long frameDelay =
-            220_000_000L;
-
-    protected final Random random =
-            new Random();
+    protected final Random random = new Random();
 
     protected Image[] rightFrames;
     protected Image[] leftFrames;
     protected Image[] upFrames;
     protected Image[] downFrames;
 
-    // casa
+    // Coordenadas de la casa de los fantasmas
     private final int homeCol = 14;
     private final int homeRow = 14;
 
-    // bfs ojos
-    private List<int[]> deadPath =
-            new ArrayList<>();
-
+    // Ruta BFS para cuando mueren (Ojos)
+    private List<int[]> deadPath = new ArrayList<>();
     private int deadPathIndex = 0;
 
-    // fright sprites
+    // Sprites compartidos (Fright y Ojos)
     private static final Image[] frightenedFrames = {
-
-            new Image(
-                    Ghost.class.getResource(
-                            "/assets/ghost/shared/fright1.png"
-                    ).toExternalForm()
-            ),
-
-            new Image(
-                    Ghost.class.getResource(
-                            "/assets/ghost/shared/fright2.png"
-                    ).toExternalForm()
-            )
+            new Image(Ghost.class.getResource("/assets/ghost/shared/fright1.png").toExternalForm()),
+            new Image(Ghost.class.getResource("/assets/ghost/shared/fright2.png").toExternalForm())
     };
 
-    // ojos
-    private static final Image deadRight =
+    private static final Image deadRight = new Image(Ghost.class.getResource("/assets/ghost/shared/deadr.png").toExternalForm());
+    private static final Image deadLeft  = new Image(Ghost.class.getResource("/assets/ghost/shared/deadl.png").toExternalForm());
+    private static final Image deadUp    = new Image(Ghost.class.getResource("/assets/ghost/shared/deadu.png").toExternalForm());
+    private static final Image deadDown  = new Image(Ghost.class.getResource("/assets/ghost/shared/deadd.png").toExternalForm());
 
-            new Image(
-                    Ghost.class.getResource(
-                            "/assets/ghost/shared/deadr.png"
-                    ).toExternalForm()
-            );
-
-    private static final Image deadLeft =
-
-            new Image(
-                    Ghost.class.getResource(
-                            "/assets/ghost/shared/deadl.png"
-                    ).toExternalForm()
-            );
-
-    private static final Image deadUp =
-
-            new Image(
-                    Ghost.class.getResource(
-                            "/assets/ghost/shared/deadu.png"
-                    ).toExternalForm()
-            );
-
-    private static final Image deadDown =
-
-            new Image(
-                    Ghost.class.getResource(
-                            "/assets/ghost/shared/deadd.png"
-                    ).toExternalForm()
-            );
-
-    public Ghost(
-            double startX,
-            double startY,
-            PacMan pacman,
-            long delay
-    ) {
-
+    public Ghost(double startX, double startY, PacMan pacman, long delay) {
         this.x = startX;
         this.y = startY;
-
         this.startX = startX;
         this.startY = startY;
-
         this.startDelay = delay;
-
         this.pacman = pacman;
 
-        releaseTime =
-                System.nanoTime() + delay;
+        releaseTime = System.nanoTime() + delay;
     }
-     public void update(long now) {
 
-        // salir casa
+    public void update(long now) {
+        // Lógica para salir de la casa
         if (!released) {
-
             if (now >= releaseTime) {
-
                 if (y > 11 * GameMap.TILE_SIZE) {
-
                     y -= speed;
-
                 } else {
-
                     released = true;
+                    int col = (int) Math.round(x / GameMap.TILE_SIZE);
 
-                    int col =
-                            (int)Math.round(
-                                    x / GameMap.TILE_SIZE
-                            );
-
-                    // separarse
-                    dx = (col <= 13)
-                            ? -1
-                            : 1;
-
+                    // Separarse al salir
+                    dx = (col <= 13) ? -1 : 1;
                     dy = 0;
 
                     nextDx = dx;
                     nextDy = dy;
+
+                    // Inicializar el primer objetivo del riel al salir de la casa
+                    snapToGrid();
+                    targetX = x;
+                    targetY = y;
+                    hasTarget = true;
                 }
             }
-
             animate(now);
-
             return;
         }
 
-        // terminar fright
-        if (
-                frightened
-                        &&
-                        now - frightenedStart >
-                                7_000_000_000L
-        ) {
-
+        // Terminar estado asustado (Fright) tras 7 segundos
+        if (frightened && now - frightenedStart > 7_000_000_000L) {
             frightened = false;
-
             speed = normalSpeed;
         }
 
-        // terminar slow
+        // Terminar estado ralentizado (Slow)
         if (slow && now > slowEnd) {
-
             slow = false;
-
             speed = normalSpeed;
         }
 
-        // ojos
+        // Si está muerto (sólo los ojos), regresa a casa mediante BFS directo
         if (dead) {
-
             moveToHome();
-
             animate(now);
-
             return;
         }
 
-        // velocidad
+        // Gestión dinámica de velocidades según estados
         if (frightened) {
-
             speed = 0.7;
-
         } else if (slow) {
-
             speed = 0.5;
-
         } else {
-
             speed = normalSpeed;
         }
 
-        // IA
-        if (isCentered()) {
-
-            snapToGrid();
-
-            chooseDirection();
-        }
-
+        // El movimiento gestiona internamente cuándo ejecutar chooseDirection() al pisar azulejos
         move();
-
         animate(now);
     }
 
     protected void move() {
-
-        // girar solo en centros
-        if (isCentered()) {
-
+        // Si es el primer frame de movimiento, asegurar coordenadas base como objetivo
+        if (!hasTarget) {
             snapToGrid();
+            targetX = x;
+            targetY = y;
+            hasTarget = true;
+        }
 
-            if (
-                    !isWall(
-                            x + nextDx * GameMap.TILE_SIZE,
-                            y + nextDy * GameMap.TILE_SIZE
-                    )
-            ) {
+        // Calcular la distancia que le falta para llegar al centro de su azulejo destino
+        double distX = targetX - x;
+        double distY = targetY - y;
+        double distance = Math.hypot(distX, distY);
 
+        // Si ya llegó al centro del azulejo actual (o está extremadamente cerca en base a su velocidad)
+        if (distance <= speed) {
+            x = targetX;
+            y = targetY; // Forzar alineación perfecta en el centro del nodo
+
+            // 1. Preguntar a la IA cuál quiere que sea el siguiente giro (Modifica nextDx y nextDy)
+            chooseDirection();
+
+            // 2. Si el giro planeado no choca contra una pared, cambiar la dirección de movimiento actual
+            if (!isWall(x + nextDx * GameMap.TILE_SIZE, y + nextDy * GameMap.TILE_SIZE)) {
                 dx = nextDx;
                 dy = nextDy;
             }
-        }
 
-        double nextX =
-                x + dx * speed;
+            // 3. Salvavidas si la dirección actual se topa con un muro de frente (intersección bloqueada)
+            if (isWall(x + dx * GameMap.TILE_SIZE, y + dy * GameMap.TILE_SIZE)) {
+                List<int[]> validDirs = getPossibleDirections();
+                validDirs.removeIf(d -> d[0] == -dx && d[1] == -dy); // Evitar dar media vuelta si hay opciones
 
-        double nextY =
-                y + dy * speed;
+                if (validDirs.isEmpty()) {
+                    validDirs = getPossibleDirections(); // Si está atrapado, aceptar la reversa
+                }
 
-        // evitar empalmes
-        if (collidesWithGhost(nextX, nextY)) {
-
-            List<int[]> dirs = getPossibleDirections();
-
-            dirs.removeIf(d ->
-                    d[0] == -dx
-                            &&
-                            d[1] == -dy
-            );
-
-            if (!dirs.isEmpty()) {
-
-                int[] chosen =
-                        dirs.get(
-                                random.nextInt(
-                                        dirs.size()
-                                )
-                        );
-
-                dx = chosen[0];
-                dy = chosen[1];
-
-                nextDx = dx;
-                nextDy = dy;
+                if (!validDirs.isEmpty()) {
+                    int[] chosen = validDirs.get(random.nextInt(validDirs.size()));
+                    dx = chosen[0];
+                    dy = chosen[1];
+                    nextDx = dx;
+                    nextDy = dy;
+                } else {
+                    dx = 0;
+                    dy = 0; // Freno absoluto en caso de error estructural del mapa
+                }
             }
 
-            return;
-        }
-
-        // movimiento normal
-        if (!isWall(nextX, nextY)) {
-
-            x = nextX;
-            y = nextY;
+            // 4. Registrar el nuevo azulejo objetivo hacia el cual se va a desplazar
+            targetX = x + dx * GameMap.TILE_SIZE;
+            targetY = y + dy * GameMap.TILE_SIZE;
 
         } else {
-
-            snapToGrid();
-
-            List<int[]> dirs =
-                    getPossibleDirections();
-
-            // quitar reversa
-            dirs.removeIf(d ->
-                    d[0] == -dx
-                            &&
-                            d[1] == -dy
-            );
-
-            if (!dirs.isEmpty()) {
-
-                int[] chosen =
-                        dirs.get(
-                                random.nextInt(
-                                        dirs.size()
-                                )
-                        );
-
-                dx = chosen[0];
-                dy = chosen[1];
-
-                nextDx = dx;
-                nextDy = dy;
-            }
-        }
-
-        // snap smooth
-        if (
-                Math.abs(
-                        x % GameMap.TILE_SIZE
-                ) < speed
-        ) {
-
-            x = Math.round(
-                    x / GameMap.TILE_SIZE
-            ) * GameMap.TILE_SIZE;
-        }
-
-        if (
-                Math.abs(
-                        y % GameMap.TILE_SIZE
-                ) < speed
-        ) {
-
-            y = Math.round(
-                    y / GameMap.TILE_SIZE
-            ) * GameMap.TILE_SIZE;
+            // Si está viajando a través del pasillo del azulejo, avanza de forma recta y estable
+            x += dx * speed;
+            y += dy * speed;
         }
     }
 
-    protected boolean collidesWithGhost(
-            double nextX,
-            double nextY
-    ) {
-
-        if (pacman.getGhosts() == null) {
-            return false;
-        }
-
-        for (Ghost other : pacman.getGhosts()) {
-
-            if (other == this) continue;
-
-            if (other.isDead()) continue;
-
-            double dist =
-                    Math.hypot(
-                            nextX - other.getX(),
-                            nextY - other.getY()
-                    );
-
-            // MÁS PEQUEÑO para que no se bloqueen
-            if (dist < GameMap.TILE_SIZE * 0.45) {
-
-                // EN FRIGHT NO BLOQUEAR
-                if (frightened) {
-                    continue;
-                }
-
-                return true;
-            }
-        }
-
+    protected boolean collidesWithGhost(double nextX, double nextY) {
+        // Retornar falso permanentemente desactiva los choques físicos perjudiciales.
+        // Esto imita al juego de arcade clásico y evita trabas grupales.
         return false;
     }
 
     protected void chooseDirection() {
-
-        List<int[]> possibleDirs =
-                getPossibleDirections();
-
+        List<int[]> possibleDirs = getPossibleDirections();
         if (possibleDirs.isEmpty()) return;
 
-        // quitar reversa
-        List<int[]> filtered =
-                new ArrayList<>();
-
+        // Filtrar direcciones para evitar que los fantasmas regresen sobre sus propios pasos
+        List<int[]> filtered = new ArrayList<>();
         for (int[] dir : possibleDirs) {
-
-            if (
-                    !(dir[0] == -dx
-                            &&
-                            dir[1] == -dy)
-            ) {
-
+            if (!(dir[0] == -dx && dir[1] == -dy)) {
                 filtered.add(dir);
             }
         }
-
         if (!filtered.isEmpty()) {
-
             possibleDirs = filtered;
         }
 
-        // fright random
+        // MODO FRIGHT: Movimiento caótico y puramente aleatorio en bifurcaciones
         if (frightened) {
-
-            int[] dir =
-                    possibleDirs.get(
-                            random.nextInt(
-                                    possibleDirs.size()
-                            )
-                    );
-
+            int[] dir = possibleDirs.get(random.nextInt(possibleDirs.size()));
             nextDx = dir[0];
             nextDy = dir[1];
-
             return;
         }
 
+        // MODO NORMAL: Búsqueda matemática de distancia directa Euclidiana hacia Pacman (Sin Jitter)
         double pacX = pacman.getX();
         double pacY = pacman.getY();
 
-        double bestDistance =
-                Double.MAX_VALUE;
-
+        double bestDistance = Double.MAX_VALUE;
         int bestDx = dx;
         int bestDy = dy;
 
         for (int[] dir : possibleDirs) {
+            double futureX = x + dir[0] * GameMap.TILE_SIZE;
+            double futureY = y + dir[1] * GameMap.TILE_SIZE;
 
-            double futureX =
-                    x +
-                            dir[0] *
-                                    GameMap.TILE_SIZE;
-
-            double futureY =
-                    y +
-                            dir[1] *
-                                    GameMap.TILE_SIZE;
-
-            double jitter =
-                    random.nextDouble() * 0.8;
-
-            double distance =
-                    Math.hypot(
-                            pacX - futureX,
-                            pacY - futureY
-                    ) + jitter;
+            double distance = Math.hypot(pacX - futureX, pacY - futureY);
 
             if (distance < bestDistance) {
-
                 bestDistance = distance;
-
                 bestDx = dir[0];
                 bestDy = dir[1];
             }
@@ -481,310 +267,127 @@ public class Ghost {
     }
 
     protected List<int[]> getPossibleDirections() {
-
-        List<int[]> dirs =
-                new ArrayList<>();
-
-        int[][] directions = {
-                {1,0},
-                {-1,0},
-                {0,1},
-                {0,-1}
-        };
+        List<int[]> dirs = new ArrayList<>();
+        int[][] directions = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
         for (int[] dir : directions) {
-
-            int testDx = dir[0];
-            int testDy = dir[1];
-
-            double nextX =
-                    x +
-                            testDx *
-                                    GameMap.TILE_SIZE;
-
-            double nextY =
-                    y +
-                            testDy *
-                                    GameMap.TILE_SIZE;
+            double nextX = x + dir[0] * GameMap.TILE_SIZE;
+            double nextY = y + dir[1] * GameMap.TILE_SIZE;
 
             if (!isWall(nextX, nextY)) {
-
                 dirs.add(dir);
             }
         }
-
         return dirs;
     }
 
     private void moveToHome() {
-
         if (deadPath.isEmpty()) {
-
             computeDeadPath();
-
             if (deadPath.isEmpty()) {
-
                 resetGhost();
-
                 return;
             }
         }
 
         if (deadPathIndex >= deadPath.size()) {
-
             resetGhost();
-
             return;
         }
 
-        int[] targetTile =
-                deadPath.get(deadPathIndex);
+        int[] targetTile = deadPath.get(deadPathIndex);
+        double targetTileX = targetTile[1] * GameMap.TILE_SIZE;
+        double targetTileY = targetTile[0] * GameMap.TILE_SIZE;
 
-        double targetX =
-                targetTile[1] *
-                        GameMap.TILE_SIZE;
-
-        double targetY =
-                targetTile[0] *
-                        GameMap.TILE_SIZE;
-
-        double distX = targetX - x;
-        double distY = targetY - y;
-
-        double dist =
-                Math.hypot(distX, distY);
+        double distX = targetTileX - x;
+        double distY = targetTileY - y;
+        double dist = Math.hypot(distX, distY);
 
         if (dist < deadSpeed + 0.5) {
-
-            x = targetX;
-            y = targetY;
-
+            x = targetTileX;
+            y = targetTileY;
             deadPathIndex++;
 
-            if (
-                    deadPathIndex <
-                            deadPath.size()
-            ) {
-
-                int[] next =
-                        deadPath.get(
-                                deadPathIndex
-                        );
-
-                dx = Integer.signum(
-                        next[1] - targetTile[1]
-                );
-
-                dy = Integer.signum(
-                        next[0] - targetTile[0]
-                );
+            if (deadPathIndex < deadPath.size()) {
+                int[] next = deadPath.get(deadPathIndex);
+                dx = Integer.signum(next[1] - targetTile[1]);
+                dy = Integer.signum(next[0] - targetTile[0]);
             }
-
         } else {
-
-            x +=
-                    (distX / dist)
-                            * deadSpeed;
-
-            y +=
-                    (distY / dist)
-                            * deadSpeed;
+            x += (distX / dist) * deadSpeed;
+            y += (distY / dist) * deadSpeed;
         }
     }
 
     private void computeDeadPath() {
+        int startCol = (int) Math.round(x / GameMap.TILE_SIZE);
+        int startRow = (int) Math.round(y / GameMap.TILE_SIZE);
 
-        int startCol =
-                (int)Math.round(
-                        x / GameMap.TILE_SIZE
-                );
+        startCol = Math.max(0, Math.min(GameMap.getCols() - 1, startCol));
+        startRow = Math.max(0, Math.min(GameMap.getRows() - 1, startRow));
 
-        int startRow =
-                (int)Math.round(
-                        y / GameMap.TILE_SIZE
-                );
+        boolean[][] visited = new boolean[GameMap.getRows()][GameMap.getCols()];
+        int[][] parentRow = new int[GameMap.getRows()][GameMap.getCols()];
+        int[][] parentCol = new int[GameMap.getRows()][GameMap.getCols()];
 
-        startCol =
-                Math.max(
-                        0,
-                        Math.min(
-                                GameMap.getCols() - 1,
-                                startCol
-                        )
-                );
+        for (int[] row : parentRow) Arrays.fill(row, -1);
+        for (int[] row : parentCol) Arrays.fill(row, -1);
 
-        startRow =
-                Math.max(
-                        0,
-                        Math.min(
-                                GameMap.getRows() - 1,
-                                startRow
-                        )
-                );
-
-        boolean[][] visited =
-                new boolean
-                        [GameMap.getRows()]
-                        [GameMap.getCols()];
-
-        int[][] parentRow =
-                new int
-                        [GameMap.getRows()]
-                        [GameMap.getCols()];
-
-        int[][] parentCol =
-                new int
-                        [GameMap.getRows()]
-                        [GameMap.getCols()];
-
-        for (int[] row : parentRow) {
-
-            Arrays.fill(row, -1);
-        }
-
-        for (int[] row : parentCol) {
-
-            Arrays.fill(row, -1);
-        }
-
-        Queue<int[]> queue =
-                new LinkedList<>();
-
-        queue.add(
-                new int[]{
-                        startRow,
-                        startCol
-                }
-        );
-
+        Queue<int[]> queue = new LinkedList<>();
+        queue.add(new int[]{startRow, startCol});
         visited[startRow][startCol] = true;
 
-        int[][] dirs = {
-                {1,0},
-                {-1,0},
-                {0,1},
-                {0,-1}
-        };
-
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
         boolean found = false;
 
         while (!queue.isEmpty()) {
-
-            int[] current =
-                    queue.poll();
-
+            int[] current = queue.poll();
             int row = current[0];
             int col = current[1];
 
-            if (
-                    row == homeRow
-                            &&
-                            col == homeCol
-            ) {
-
+            if (row == homeRow && col == homeCol) {
                 found = true;
-
                 break;
             }
 
             for (int[] dir : dirs) {
-
                 int nr = row + dir[0];
                 int nc = col + dir[1];
 
-                if (
-                        nr < 0
-                                ||
-                                nr >= GameMap.getRows()
-                                ||
-                                nc < 0
-                                ||
-                                nc >= GameMap.getCols()
-                ) {
-                    continue;
-                }
+                if (nr < 0 || nr >= GameMap.getRows() || nc < 0 || nc >= GameMap.getCols()) continue;
+                if (visited[nr][nc]) continue;
 
-                if (visited[nr][nc]) {
-                    continue;
-                }
-
-                int tile =
-                        GameMap.getTile(
-                                nr,
-                                nc
-                        );
-
-                // ojos atraviesan puerta
-                if (tile == 1) {
-                    continue;
-                }
+                int tile = GameMap.getTile(nr, nc);
+                if (tile == 1) continue; // Los ojos ignoran las compuertas blancas (tile 1)
 
                 visited[nr][nc] = true;
-
                 parentRow[nr][nc] = row;
-
                 parentCol[nr][nc] = col;
-
-                queue.add(
-                        new int[]{
-                                nr,
-                                nc
-                        }
-                );
+                queue.add(new int[]{nr, nc});
             }
         }
 
         deadPath.clear();
-
         if (!found) return;
 
         int row = homeRow;
         int col = homeCol;
 
-        while (
-                !(row == startRow
-                        &&
-                        col == startCol)
-        ) {
-
-            deadPath.add(
-                    0,
-                    new int[]{
-                            row,
-                            col
-                    }
-            );
-
-            int pr =
-                    parentRow[row][col];
-
-            int pc =
-                    parentCol[row][col];
-
+        while (!(row == startRow && col == startCol)) {
+            deadPath.add(0, new int[]{row, col});
+            int pr = parentRow[row][col];
+            int pc = parentCol[row][col];
             row = pr;
             col = pc;
         }
 
-        deadPath.add(
-                0,
-                new int[]{
-                        startRow,
-                        startCol
-                }
-        );
-
+        deadPath.add(0, new int[]{startRow, startCol});
         deadPathIndex = 1;
     }
 
     private void resetGhost() {
-
-        x =
-                homeCol *
-                        GameMap.TILE_SIZE;
-
-        y =
-                homeRow *
-                        GameMap.TILE_SIZE;
+        x = homeCol * GameMap.TILE_SIZE;
+        y = homeRow * GameMap.TILE_SIZE;
 
         dead = false;
         frightened = false;
@@ -795,253 +398,101 @@ public class Ghost {
 
         dx = 0;
         dy = -1;
-
         nextDx = 0;
         nextDy = -1;
 
-        releaseTime =
-                System.nanoTime()
-                        + 2_000_000_000L;
-
+        releaseTime = System.nanoTime() + 2_000_000_000L;
         deadPath.clear();
-
         deadPathIndex = 0;
+        hasTarget = false; // Resetear bandera del riel
     }
 
     protected void snapToGrid() {
-
-        x = Math.round(
-                x / GameMap.TILE_SIZE
-        ) * GameMap.TILE_SIZE;
-
-        y = Math.round(
-                y / GameMap.TILE_SIZE
-        ) * GameMap.TILE_SIZE;
+        x = Math.round(x / GameMap.TILE_SIZE) * GameMap.TILE_SIZE;
+        y = Math.round(y / GameMap.TILE_SIZE) * GameMap.TILE_SIZE;
     }
 
     protected boolean isCentered() {
-
-        double mx =
-                x % GameMap.TILE_SIZE;
-
-        double my =
-                y % GameMap.TILE_SIZE;
-
-        boolean cx =
-                mx < speed
-                        ||
-                        mx >
-                                GameMap.TILE_SIZE
-                                        - speed;
-
-        boolean cy =
-                my < speed
-                        ||
-                        my >
-                                GameMap.TILE_SIZE
-                                        - speed;
-
-        return cx && cy;
+        // Mantenemos el método por compatibilidad de firmas de clase,
+        // pero la precisión ahora es manejada de forma nativa por el gestor de proximidad en move()
+        double cx = Math.round(x / GameMap.TILE_SIZE) * GameMap.TILE_SIZE;
+        double cy = Math.round(y / GameMap.TILE_SIZE) * GameMap.TILE_SIZE;
+        return Math.abs(x - cx) < 0.01 && Math.abs(y - cy) < 0.01;
     }
 
-    protected boolean isWall(
-            double nextX,
-            double nextY
-    ) {
+    protected boolean isWall(double nextX, double nextY) {
+        double offset = (renderSize - hitboxSize) / 2;
 
-        double offset =
-                (renderSize - hitboxSize)
-                        / 2;
+        int leftCol   = (int) ((nextX + offset) / GameMap.TILE_SIZE);
+        int rightCol  = (int) ((nextX + offset + hitboxSize) / GameMap.TILE_SIZE);
+        int topRow    = (int) ((nextY + offset) / GameMap.TILE_SIZE);
+        int bottomRow = (int) ((nextY + offset + hitboxSize) / GameMap.TILE_SIZE);
 
-        int leftCol =
-                (int)(
-                        (nextX + offset)
-                                /
-                                GameMap.TILE_SIZE
-                );
-
-        int rightCol =
-                (int)(
-                        (
-                                nextX
-                                        + offset
-                                        + hitboxSize
-                        )
-                                /
-                                GameMap.TILE_SIZE
-                );
-
-        int topRow =
-                (int)(
-                        (nextY + offset)
-                                /
-                                GameMap.TILE_SIZE
-                );
-
-        int bottomRow =
-                (int)(
-                        (
-                                nextY
-                                        + offset
-                                        + hitboxSize
-                        )
-                                /
-                                GameMap.TILE_SIZE
-                );
-
-        if (
-                topRow < 0
-                        ||
-                        bottomRow >= GameMap.getRows()
-                        ||
-                        leftCol < 0
-                        ||
-                        rightCol >= GameMap.getCols()
-        ) {
-
+        if (topRow < 0 || bottomRow >= GameMap.getRows() || leftCol < 0 || rightCol >= GameMap.getCols()) {
             return true;
         }
 
-        int topLeft =
-                GameMap.getTile(
-                        topRow,
-                        leftCol
-                );
+        int topLeft     = GameMap.getTile(topRow, leftCol);
+        int topRight    = GameMap.getTile(topRow, rightCol);
+        int bottomLeft  = GameMap.getTile(bottomRow, leftCol);
+        int bottomRight = GameMap.getTile(bottomRow, rightCol);
 
-        int topRight =
-                GameMap.getTile(
-                        topRow,
-                        rightCol
-                );
-
-        int bottomLeft =
-                GameMap.getTile(
-                        bottomRow,
-                        leftCol
-                );
-
-        int bottomRight =
-                GameMap.getTile(
-                        bottomRow,
-                        rightCol
-                );
-
-        // ojos atraviesan puerta
+        // Los ojos (dead) pueden atravesar las compuertas/puertas de la casa (tile 1)
         if (dead) {
-
-            return
-                    topLeft == 1
-                            ||
-                            topRight == 1
-                            ||
-                            bottomLeft == 1
-                            ||
-                            bottomRight == 1;
+            return topLeft == 1 || topRight == 1 || bottomLeft == 1 || bottomRight == 1;
         }
 
-        return
-                topLeft == 1
-                        ||
-                        topRight == 1
-                        ||
-                        bottomLeft == 1
-                        ||
-                        bottomRight == 1
-                        ||
-                        topLeft == 4
-                        ||
-                        topRight == 4
-                        ||
-                        bottomLeft == 4
-                        ||
-                        bottomRight == 4;
+        return topLeft == 1 || topRight == 1 || bottomLeft == 1 || bottomRight == 1 ||
+                topLeft == 4 || topRight == 4 || bottomLeft == 4 || bottomRight == 4;
     }
 
-     protected void animate(long now) {
-
+    protected void animate(long now) {
         if (dead) return;
 
-        if (
-                now - lastFrameTime
-                        >
-                        frameDelay
-        ) {
-
-            currentFrame =
-                    (currentFrame + 1) % 2;
-
+        if (now - lastFrameTime > frameDelay) {
+            currentFrame = (currentFrame + 1) % 2;
             lastFrameTime = now;
         }
     }
 
     public Image getCurrentFrame() {
-
         if (frightened && !dead) {
-
             return frightenedFrames[currentFrame];
         }
 
         if (dead) {
-
             if (dx == 1) return deadRight;
-
             if (dx == -1) return deadLeft;
-
             if (dy == -1) return deadUp;
-
             return deadDown;
         }
 
-        if (dx == 1) {
-
-            return rightFrames[currentFrame];
-        }
-
-        if (dx == -1) {
-
-            return leftFrames[currentFrame];
-        }
-
-        if (dy == -1) {
-
-            return upFrames[currentFrame];
-        }
-
+        if (dx == 1)  return rightFrames[currentFrame];
+        if (dx == -1) return leftFrames[currentFrame];
+        if (dy == -1) return upFrames[currentFrame];
         return downFrames[currentFrame];
     }
 
     public void frighten(long now) {
-
         frightened = true;
-
         frightenedStart = now;
     }
 
     public void activateSlow(long now) {
-
         slow = true;
-
-        slowEnd =
-                now + 8_000_000_000L;
+        slowEnd = now + 8_000_000_000L;
     }
 
     public void eaten() {
-
         dead = true;
-
         frightened = false;
-
         slow = false;
-
         speed = deadSpeed;
-
         deadPath.clear();
-
         deadPathIndex = 0;
     }
 
     public void reset() {
-
         x = startX;
         y = startY;
 
@@ -1054,31 +505,20 @@ public class Ghost {
 
         dx = 0;
         dy = -1;
-
         nextDx = 0;
         nextDy = -1;
 
-        releaseTime =
-                System.nanoTime()
-                        + startDelay;
-
+        releaseTime = System.nanoTime() + startDelay;
         deadPath.clear();
-
         deadPathIndex = 0;
+        hasTarget = false;
     }
 
-    public void reset(
-            double sx,
-            double sy,
-            long delay
-    ) {
-
+    public void reset(double sx, double sy, long delay) {
         x = sx;
         y = sy;
-
         startX = sx;
         startY = sy;
-
         startDelay = delay;
 
         dead = false;
@@ -1090,61 +530,28 @@ public class Ghost {
 
         dx = 0;
         dy = -1;
-
         nextDx = 0;
         nextDy = -1;
 
-        releaseTime =
-                System.nanoTime()
-                        + delay;
-
+        releaseTime = System.nanoTime() + delay;
         deadPath.clear();
-
         deadPathIndex = 0;
+        hasTarget = false;
     }
 
-    public void increaseNormalSpeed(
-            double multiplier
-    ) {
-
+    public void increaseNormalSpeed(double multiplier) {
         normalSpeed *= multiplier;
-
         if (normalSpeed > 2.5) {
-
             normalSpeed = 2.5;
         }
-
         speed = normalSpeed;
     }
 
-    //GETERS
-    public boolean isDead() {
-
-        return dead;
-    }
-
-    public boolean isFrightened() {
-
-        return frightened;
-    }
-
-    public boolean isReleased() {
-
-        return released;
-    }
-
-    public double getX() {
-
-        return x;
-    }
-
-    public double getY() {
-
-        return y;
-    }
-
-    public double getRenderSize() {
-
-        return renderSize;
-    }
+    // Getters básicos
+    public boolean isDead() { return dead; }
+    public boolean isFrightened() { return frightened; }
+    public boolean isReleased() { return released; }
+    public double getX() { return x; }
+    public double getY() { return y; }
+    public double getRenderSize() { return renderSize; }
 }

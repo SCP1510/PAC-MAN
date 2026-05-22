@@ -37,45 +37,72 @@ public class Clyde extends Ghost {
 
     @Override
     protected void chooseDirection() {
-
+        // 1. MODO FRIGHTENED: Si está asustado (azul), usamos la lógica aleatoria base
         if (frightened) {
-
             super.chooseDirection();
-
             return;
         }
 
+        // 2. Obtener únicamente las direcciones transitables (libres de paredes)
+        java.util.List<int[]> possibleDirs = getPossibleDirections();
+        if (possibleDirs.isEmpty()) return;
+
+        // 3. Filtrar para evitar que dé media vuelta (reversa)
+        java.util.List<int[]> filtered = new java.util.ArrayList<>();
+        for (int[] dir : possibleDirs) {
+            if (!(dir[0] == -dx && dir[1] == -dy)) {
+                filtered.add(dir);
+            }
+        }
+        // Si no es un callejón sin salida, nos quedamos con las opciones sin reversa
+        if (!filtered.isEmpty()) {
+            possibleDirs = filtered;
+        }
+
+        // 4. Calcular distancia actual a Pac-Man en píxeles
         double distance = Math.hypot(pacman.getX() - x, pacman.getY() - y);
 
-        // si está cerca, huye; si está lejos, persigue
+        int bestDx = dx;
+        int bestDy = dy;
+
+        // 5. COMPORTAMIENTO DE CLYDE: Si está a menos de 6 tiles, HUYE. Si no, PERSIGUE.
         if (distance < 6 * GameMap.TILE_SIZE) {
+            // --- MODO HUIDA ---
+            // Buscamos la dirección (DE LAS DISPONIBLES Y SIN PAREDES) que maximice la distancia
+            double maxDistance = -1;
 
-            double bestDist = -1;
-            int bestDx = dx, bestDy = dy;
-
-            for (int[] dir : getPossibleDirections()) {
-
-                if (dir[0] == -dx && dir[1] == -dy) continue;
-
+            for (int[] dir : possibleDirs) {
                 double futureX = x + dir[0] * GameMap.TILE_SIZE;
                 double futureY = y + dir[1] * GameMap.TILE_SIZE;
 
                 double dist = Math.hypot(pacman.getX() - futureX, pacman.getY() - futureY);
 
-                if (dist > bestDist) {
-
-                    bestDist = dist;
-                    bestDx   = dir[0];
-                    bestDy   = dir[1];
+                if (dist > maxDistance) {
+                    maxDistance = dist;
+                    bestDx = dir[0];
+                    bestDy = dir[1];
                 }
             }
-
-            nextDx = bestDx;
-            nextDy = bestDy;
-
         } else {
+            // --- MODO PERSIGUIENDO (Lógica base estándar) ---
+            double minDistance = Double.MAX_VALUE;
 
-            super.chooseDirection();
+            for (int[] dir : possibleDirs) {
+                double futureX = x + dir[0] * GameMap.TILE_SIZE;
+                double futureY = y + dir[1] * GameMap.TILE_SIZE;
+
+                double dist = Math.hypot(pacman.getX() - futureX, pacman.getY() - futureY);
+
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    bestDx = dir[0];
+                    bestDy = dir[1];
+                }
+            }
         }
+
+        // 6. Asignar las coordenadas seguras encontradas
+        nextDx = bestDx;
+        nextDy = bestDy;
     }
 }

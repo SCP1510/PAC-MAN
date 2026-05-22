@@ -36,21 +36,21 @@ public class Inky extends Ghost {
 
     @Override
     protected void chooseDirection() {
+        // Si está asustado, ignora el comportamiento impredecible y corre como los demás
+        if (frightened) {
+            super.chooseDirection();
+            return;
+        }
 
-        // 35% random, 65% perseguir
+        // 35% random, 65% perseguir de forma normal respetando paredes
         if (random.nextDouble() < 0.35) {
-
             var dirs = getPossibleDirections();
-
             dirs.removeIf(d -> d[0] == -dx && d[1] == -dy);
 
             if (!dirs.isEmpty()) {
-
                 var chosen = dirs.get(random.nextInt(dirs.size()));
-
                 nextDx = chosen[0];
                 nextDy = chosen[1];
-
                 return;
             }
         }
