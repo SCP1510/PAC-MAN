@@ -1,0 +1,133 @@
+Descripción técnica
+
+El proyecto utiliza JavaFX para renderizado y animaciones. La lógica del juego está basada en un sistema de actualización constante usando coordenadas en pixeles y un mapa dividido en tiles.
+
+Arquitectura
+
+El proyecto sigue una estructura orientada a objetos.
+
+Main / Launch
+Inicializa JavaFX y crea la escena principal.
+
+GameMap
+Contiene el mapa del juego y utilidades como:
+
+getTile()
+getRows()
+getCols()
+TILE_SIZE
+
+PacMan
+Controla:
+
+movimiento del jugador
+colisiones
+animaciones
+interacción con fantasmas
+
+Ghost
+Clase base de todos los fantasmas.
+
+Controla:
+
+movimiento
+IA
+pathfinding BFS
+animaciones
+estados frightened/dead
+colisiones
+
+Sistema de movimiento
+
+Todos los personajes usan coordenadas double para movimiento suave.
+
+El movimiento depende de:
+dx y dy → dirección actual
+nextDx y nextDy → próxima dirección
+
+La velocidad cambia dependiendo del estado:
+normal
+slow
+frightened
+dead
+
+Sistema de colisiones
+
+Las colisiones se calculan usando hitboxes más pequeñas que el sprite visual para mejorar jugabilidad.
+
+Método principal:
+isWall(nextX, nextY)
+
+Verifica tiles alrededor del personaje antes de moverlo.
+
+Tiles usados
+
+1 → pared
+4 → puerta de la casa de fantasmas
+
+IA de fantasmas
+
+Los fantasmas:
+
+buscan a Pac-Man
+evitan reversa innecesaria
+eligen caminos válidos
+usan BFS cuando mueren
+
+Métodos importantes:
+chooseDirection()
+move()
+moveToHome()
+computeDeadPath()
+
+Animaciones
+
+Las animaciones cambian usando currentFrame y frameDelay.
+
+Método:
+animate(long now)
+
+Sprites
+
+Sprites almacenados en:
+assets/ghost/shared/
+
+Ejemplos:
+fright1.png
+deadr.png
+deadu.png
+
+Estados de fantasmas
+
+frightened → vulnerable
+dead → solo ojos
+slow → velocidad reducida
+released → salió de la casa
+
+Reinicio
+
+Métodos:
+reset()
+reset(double sx,double sy,long delay)
+
+Restablecen posición, velocidad y estado.
+
+Recomendaciones
+
+No modificar TILE_SIZE sin ajustar hitboxes.
+
+Evitar usar enteros para movimiento porque rompe suavidad.
+
+Mantener las rutas de assets iguales para evitar errores de carga.
+
+Posibles mejoras futuras
+
+Sistema de niveles
+Sonidos
+Menu principal
+Puntajes
+Persistencia de datos
+"IA" distinta por fantasma
+Power-ups nuevos
+
+Durante el desarrollo se utilizaron herramientas de inteligencia artificial como ChatGPT, Claude y Gemini para apoyo en depuración, refactorización visual y revisión de lógica, especialmente en la implementación de Ghost.java

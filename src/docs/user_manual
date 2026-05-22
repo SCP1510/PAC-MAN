@@ -1,0 +1,60 @@
+Descripción
+
+Pac-Man es un juego desarrollado en Java usando JavaFX. El jugador controla a Pac-Man dentro de un laberinto mientras evita fantasmas y recolecta puntos. El proyecto fue desarrollado en IntelliJ IDEA utilizando programación orientada a objetos.
+
+Requisitos
+
+Java JDK 17 o superior
+JavaFX configurado en el proyecto
+IntelliJ IDEA recomendado
+
+Cómo ejecutar el proyecto
+
+Abrir el proyecto en IntelliJ IDEA.
+
+Esperar a que carguen las dependencias y el SDK.
+
+Buscar la clase Main.java o Launch.java.
+
+Ejecutar el programa usando el botón Run.
+
+Controles
+
+W o Flecha Arriba → mover arriba
+S o Flecha Abajo → mover abajo
+A o Flecha Izquierda → mover izquierda
+D o Flecha Derecha → mover derecha
+
+Objetivo del juego
+
+Mover a Pac-Man por el mapa recolectando puntos mientras evita a los fantasmas. Algunos poderes especiales permiten ralentizar o asustar fantasmas temporalmente.
+
+Funciones implementadas
+
+Movimiento fluido de Pac-Man
+Movimiento automatico de fantasmas
+Animaciones usando sprites
+Colisiones con paredes
+Sistema de velocidad y estados especiales
+Sistema de muerte y regreso de fantasmas
+Mapa basado en tiles
+
+Estructura general
+
+Main.java o Launch.java inicia el juego.
+
+GameMap.java maneja el mapa y tiles.
+
+PacMan.java controla al jugador.
+
+Ghost.java controla la logica base de los fantasmas.
+
+Cada fantasma puede extender Ghost para tener IA distinta.
+
+Problemas comunes
+
+Si JavaFX no inicia, revisar que el SDK esté agregado correctamente.
+
+Si no aparecen sprites, revisar las rutas dentro de la carpeta assets.
+
+Si el juego va lento, verificar configuración de Java y aceleración gráfica.

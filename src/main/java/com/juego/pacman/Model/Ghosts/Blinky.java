@@ -10,7 +10,7 @@ public class Blinky extends Ghost {
         super(x, y, pacman, 0);
 
         // Blinky agresivo: sale inmediatamente y es rápido
-        speed       = 0.9;
+        speed = 0.9;
         normalSpeed = 0.9;
 
         rightFrames = new Image[]{

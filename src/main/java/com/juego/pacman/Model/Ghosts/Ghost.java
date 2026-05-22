@@ -30,12 +30,12 @@ public class Ghost {
     protected int nextDx = 0;
     protected int nextDy = -1;
 
-    // Sistema de objetivos por Azulejo (Tile-Targeting)
+    // sistema de objetivos por tile
     protected double targetX;
     protected double targetY;
     protected boolean hasTarget = false;
 
-    // Hitbox y renderizado
+    // hitbox y renderizado
     protected double hitboxSize = GameMap.TILE_SIZE * 0.7;
     protected double renderSize = GameMap.TILE_SIZE;
 
@@ -52,7 +52,7 @@ public class Ghost {
 
     protected int currentFrame = 0;
     protected long lastFrameTime = 0;
-    protected final long frameDelay = 220_000_000L; // Ajuste smooth de animación
+    protected final long frameDelay = 220_000_000L; // animacion suave
 
     protected final Random random = new Random();
 
@@ -61,15 +61,15 @@ public class Ghost {
     protected Image[] upFrames;
     protected Image[] downFrames;
 
-    // Coordenadas de la casa de los fantasmas
+    // coordenadas de la casa
     private final int homeCol = 14;
     private final int homeRow = 14;
 
-    // Ruta BFS para cuando mueren (Ojos)
+    // ruta BFS cuando mueren (ojos)
     private List<int[]> deadPath = new ArrayList<>();
     private int deadPathIndex = 0;
 
-    // Sprites compartidos (Fright y Ojos)
+    // sprites compartidos (fright y ojos)
     private static final Image[] frightenedFrames = {
             new Image(Ghost.class.getResource("/assets/ghost/shared/fright1.png").toExternalForm()),
             new Image(Ghost.class.getResource("/assets/ghost/shared/fright2.png").toExternalForm())
@@ -87,12 +87,11 @@ public class Ghost {
         this.startY = startY;
         this.startDelay = delay;
         this.pacman = pacman;
-
         releaseTime = System.nanoTime() + delay;
     }
 
     public void update(long now) {
-        // Lógica para salir de la casa
+        // logica para salir de la casa
         if (!released) {
             if (now >= releaseTime) {
                 if (y > 11 * GameMap.TILE_SIZE) {
@@ -101,14 +100,13 @@ public class Ghost {
                     released = true;
                     int col = (int) Math.round(x / GameMap.TILE_SIZE);
 
-                    // Separarse al salir
+                    // separarse al salir
                     dx = (col <= 13) ? -1 : 1;
                     dy = 0;
-
                     nextDx = dx;
                     nextDy = dy;
 
-                    // Inicializar el primer objetivo del riel al salir de la casa
+                    // inicializar primer objetivo al salir
                     snapToGrid();
                     targetX = x;
                     targetY = y;
@@ -119,26 +117,26 @@ public class Ghost {
             return;
         }
 
-        // Terminar estado asustado (Fright) tras 7 segundos
+        // terminar fright tras 7 segundos
         if (frightened && now - frightenedStart > 7_000_000_000L) {
             frightened = false;
             speed = normalSpeed;
         }
 
-        // Terminar estado ralentizado (Slow)
+        // terminar slow
         if (slow && now > slowEnd) {
             slow = false;
             speed = normalSpeed;
         }
 
-        // Si está muerto (sólo los ojos), regresa a casa mediante BFS directo
+        // si esta muerto, regresa a casa con BFS
         if (dead) {
             moveToHome();
             animate(now);
             return;
         }
 
-        // Gestión dinámica de velocidades según estados
+        // velocidad segun estado
         if (frightened) {
             speed = 0.7;
         } else if (slow) {
@@ -147,13 +145,12 @@ public class Ghost {
             speed = normalSpeed;
         }
 
-        // El movimiento gestiona internamente cuándo ejecutar chooseDirection() al pisar azulejos
         move();
         animate(now);
     }
 
     protected void move() {
-        // Si es el primer frame de movimiento, asegurar coordenadas base como objetivo
+        // primer frame: asegurar coordenadas base como objetivo
         if (!hasTarget) {
             snapToGrid();
             targetX = x;
@@ -161,33 +158,30 @@ public class Ghost {
             hasTarget = true;
         }
 
-        // Calcular la distancia que le falta para llegar al centro de su azulejo destino
         double distX = targetX - x;
         double distY = targetY - y;
         double distance = Math.hypot(distX, distY);
 
-        // Si ya llegó al centro del azulejo actual (o está extremadamente cerca en base a su velocidad)
+        // llego al centro del tile actual
         if (distance <= speed) {
             x = targetX;
-            y = targetY; // Forzar alineación perfecta en el centro del nodo
+            y = targetY; // alineacion perfecta
 
-            // 1. Preguntar a la IA cuál quiere que sea el siguiente giro (Modifica nextDx y nextDy)
+            // preguntar IA cual es el siguiente giro
             chooseDirection();
 
-            // 2. Si el giro planeado no choca contra una pared, cambiar la dirección de movimiento actual
+            // si el giro no choca, cambiar direccion actual
             if (!isWall(x + nextDx * GameMap.TILE_SIZE, y + nextDy * GameMap.TILE_SIZE)) {
                 dx = nextDx;
                 dy = nextDy;
             }
 
-            // 3. Salvavidas si la dirección actual se topa con un muro de frente (intersección bloqueada)
+            // salvavidas si la direccion actual toca una pared
             if (isWall(x + dx * GameMap.TILE_SIZE, y + dy * GameMap.TILE_SIZE)) {
                 List<int[]> validDirs = getPossibleDirections();
-                validDirs.removeIf(d -> d[0] == -dx && d[1] == -dy); // Evitar dar media vuelta si hay opciones
+                validDirs.removeIf(d -> d[0] == -dx && d[1] == -dy); // evitar reversa si hay opciones
 
-                if (validDirs.isEmpty()) {
-                    validDirs = getPossibleDirections(); // Si está atrapado, aceptar la reversa
-                }
+                if (validDirs.isEmpty()) validDirs = getPossibleDirections(); // si esta atrapado, aceptar reversa
 
                 if (!validDirs.isEmpty()) {
                     int[] chosen = validDirs.get(random.nextInt(validDirs.size()));
@@ -197,24 +191,23 @@ public class Ghost {
                     nextDy = dy;
                 } else {
                     dx = 0;
-                    dy = 0; // Freno absoluto en caso de error estructural del mapa
+                    dy = 0; // freno absoluto
                 }
             }
 
-            // 4. Registrar el nuevo azulejo objetivo hacia el cual se va a desplazar
+            // nuevo tile objetivo
             targetX = x + dx * GameMap.TILE_SIZE;
             targetY = y + dy * GameMap.TILE_SIZE;
 
         } else {
-            // Si está viajando a través del pasillo del azulejo, avanza de forma recta y estable
+            // avanzar de forma recta al siguiente tile
             x += dx * speed;
             y += dy * speed;
         }
     }
 
     protected boolean collidesWithGhost(double nextX, double nextY) {
-        // Retornar falso permanentemente desactiva los choques físicos perjudiciales.
-        // Esto imita al juego de arcade clásico y evita trabas grupales.
+        // desactivado para imitar el arcade clasico y evitar trabas grupales
         return false;
     }
 
@@ -222,18 +215,14 @@ public class Ghost {
         List<int[]> possibleDirs = getPossibleDirections();
         if (possibleDirs.isEmpty()) return;
 
-        // Filtrar direcciones para evitar que los fantasmas regresen sobre sus propios pasos
+        // evitar que regresen sobre sus propios pasos
         List<int[]> filtered = new ArrayList<>();
         for (int[] dir : possibleDirs) {
-            if (!(dir[0] == -dx && dir[1] == -dy)) {
-                filtered.add(dir);
-            }
+            if (!(dir[0] == -dx && dir[1] == -dy)) filtered.add(dir);
         }
-        if (!filtered.isEmpty()) {
-            possibleDirs = filtered;
-        }
+        if (!filtered.isEmpty()) possibleDirs = filtered;
 
-        // MODO FRIGHT: Movimiento caótico y puramente aleatorio en bifurcaciones
+        // fright: movimiento caotico y aleatorio
         if (frightened) {
             int[] dir = possibleDirs.get(random.nextInt(possibleDirs.size()));
             nextDx = dir[0];
@@ -241,7 +230,7 @@ public class Ghost {
             return;
         }
 
-        // MODO NORMAL: Búsqueda matemática de distancia directa Euclidiana hacia Pacman (Sin Jitter)
+        // modo normal: busqueda euclidiana hacia pacman
         double pacX = pacman.getX();
         double pacY = pacman.getY();
 
@@ -252,9 +241,7 @@ public class Ghost {
         for (int[] dir : possibleDirs) {
             double futureX = x + dir[0] * GameMap.TILE_SIZE;
             double futureY = y + dir[1] * GameMap.TILE_SIZE;
-
             double distance = Math.hypot(pacX - futureX, pacY - futureY);
-
             if (distance < bestDistance) {
                 bestDistance = distance;
                 bestDx = dir[0];
@@ -273,10 +260,7 @@ public class Ghost {
         for (int[] dir : directions) {
             double nextX = x + dir[0] * GameMap.TILE_SIZE;
             double nextY = y + dir[1] * GameMap.TILE_SIZE;
-
-            if (!isWall(nextX, nextY)) {
-                dirs.add(dir);
-            }
+            if (!isWall(nextX, nextY)) dirs.add(dir);
         }
         return dirs;
     }
@@ -358,7 +342,7 @@ public class Ghost {
                 if (visited[nr][nc]) continue;
 
                 int tile = GameMap.getTile(nr, nc);
-                if (tile == 1) continue; // Los ojos ignoran las compuertas blancas (tile 1)
+                if (tile == 1) continue; // ojos ignoran compuertas (tile 1)
 
                 visited[nr][nc] = true;
                 parentRow[nr][nc] = row;
@@ -404,29 +388,28 @@ public class Ghost {
         releaseTime = System.nanoTime() + 2_000_000_000L;
         deadPath.clear();
         deadPathIndex = 0;
-        hasTarget = false; // Resetear bandera del riel
+        hasTarget = false; // resetear bandera del riel
     }
 
     protected void snapToGrid() {
-        x = Math.round(x / GameMap.TILE_SIZE) * GameMap.TILE_SIZE;
-        y = Math.round(y / GameMap.TILE_SIZE) * GameMap.TILE_SIZE;
+        x = Math.round(x/ GameMap.TILE_SIZE) * GameMap.TILE_SIZE;
+        y = Math.round(y /GameMap.TILE_SIZE)* GameMap.TILE_SIZE;
     }
 
     protected boolean isCentered() {
-        // Mantenemos el método por compatibilidad de firmas de clase,
-        // pero la precisión ahora es manejada de forma nativa por el gestor de proximidad en move()
-        double cx = Math.round(x / GameMap.TILE_SIZE) * GameMap.TILE_SIZE;
-        double cy = Math.round(y / GameMap.TILE_SIZE) * GameMap.TILE_SIZE;
+        // compatibilidad de firmas; la presicion la maneja move()
+        double cx = Math.round(x/GameMap.TILE_SIZE)* GameMap.TILE_SIZE;
+        double cy = Math.round(y/GameMap.TILE_SIZE) * GameMap.TILE_SIZE;
         return Math.abs(x - cx) < 0.01 && Math.abs(y - cy) < 0.01;
     }
 
     protected boolean isWall(double nextX, double nextY) {
         double offset = (renderSize - hitboxSize) / 2;
 
-        int leftCol   = (int) ((nextX + offset) / GameMap.TILE_SIZE);
-        int rightCol  = (int) ((nextX + offset + hitboxSize) / GameMap.TILE_SIZE);
-        int topRow    = (int) ((nextY + offset) / GameMap.TILE_SIZE);
-        int bottomRow = (int) ((nextY + offset + hitboxSize) / GameMap.TILE_SIZE);
+        int leftCol   = (int) ((nextX+offset)/ GameMap.TILE_SIZE);
+        int rightCol  = (int) ((nextX+offset+hitboxSize)/ GameMap.TILE_SIZE);
+        int topRow    = (int) ((nextY+offset)/ GameMap.TILE_SIZE);
+        int bottomRow = (int) ((nextY+offset+hitboxSize)/ GameMap.TILE_SIZE);
 
         if (topRow < 0 || bottomRow >= GameMap.getRows() || leftCol < 0 || rightCol >= GameMap.getCols()) {
             return true;
@@ -437,7 +420,7 @@ public class Ghost {
         int bottomLeft  = GameMap.getTile(bottomRow, leftCol);
         int bottomRight = GameMap.getTile(bottomRow, rightCol);
 
-        // Los ojos (dead) pueden atravesar las compuertas/puertas de la casa (tile 1)
+        // ojos (dead) pueden atravesar puertas de la casa (tile 1)
         if (dead) {
             return topLeft == 1 || topRight == 1 || bottomLeft == 1 || bottomRight == 1;
         }
@@ -448,7 +431,6 @@ public class Ghost {
 
     protected void animate(long now) {
         if (dead) return;
-
         if (now - lastFrameTime > frameDelay) {
             currentFrame = (currentFrame + 1) % 2;
             lastFrameTime = now;
@@ -456,12 +438,10 @@ public class Ghost {
     }
 
     public Image getCurrentFrame() {
-        if (frightened && !dead) {
-            return frightenedFrames[currentFrame];
-        }
+        if (frightened && !dead) return frightenedFrames[currentFrame];
 
         if (dead) {
-            if (dx == 1) return deadRight;
+            if (dx == 1)  return deadRight;
             if (dx == -1) return deadLeft;
             if (dy == -1) return deadUp;
             return deadDown;
@@ -541,13 +521,11 @@ public class Ghost {
 
     public void increaseNormalSpeed(double multiplier) {
         normalSpeed *= multiplier;
-        if (normalSpeed > 2.5) {
-            normalSpeed = 2.5;
-        }
+        if (normalSpeed > 2.5) normalSpeed = 2.5;
         speed = normalSpeed;
     }
 
-    // Getters básicos
+    // getters basicos
     public boolean isDead() { return dead; }
     public boolean isFrightened() { return frightened; }
     public boolean isReleased() { return released; }
